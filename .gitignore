@@ -1,0 +1,17 @@
+emsdk/
+build/
+*.wasm
+*.o
+*.bin
+*.BIN
+dev-roms/
+*.sav
+*.ram
+*.log
+*.ppm
+*.png
+!web/
+!web/maragotchifavicon.png
+!dist/maragotchifavicon.png
+node_modules/
+.gh-pages-worktree/

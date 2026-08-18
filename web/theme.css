@@ -1,0 +1,440 @@
+/* Placement stays under .grid; appearance also applies to standalone cards in web/states.html. */
+:root {
+  --bg:        #fff8f0;
+  --card:      #ffffff;
+  --sunken:    #fdf3ea;
+  --line:      #f0e6da;
+  --line2:     #e0d4c8;
+  --ink:       #2d2a32;
+  --dim:       #6b6570;
+  --faint:     #736d7b;
+  --btn:       #ffffff;
+  --btn-hover: #fde8ed;
+  --primary:   #cd4470;
+  --primary-ink: #ffffff;
+  --warn:      #a85f18;
+  --bad:       #c9333f;
+  --ok:        #2b7d64;
+  --glass:     #fde8ed;
+  --bw: 2px;
+
+  --r-card:  16px;
+  --r-ctl:   12px;
+  --r-glass: 20px;
+
+  --t-label: 11.5px;
+  --t-small: 12.5px;
+  --t-ui:    13.5px;
+  --t-body:  14px;
+  --t-item:  15px;
+  --t-title: 26px;
+
+  /* Allow extra width so fractional device-pixel ratios do not shrink the canvas. */
+  --screen:  512px;
+  --bezel:   11px;
+  --device-width: 546px;
+
+  /* Shared with the phone bleed. */
+  --pad: 1.25rem;
+
+  /* Use installed or system fonts only; do not add remote font loading. */
+  --sans: ui-rounded, "SF Pro Rounded", Quicksand, Nunito,
+          "Hiragino Maru Gothic ProN", "Segoe UI Variable Text",
+          "Trebuchet MS", system-ui, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --bg:        #191713;
+  --card:      #23201b;
+  --sunken:    #1f1c17;
+  --line:      #383329;
+  --line2:     #4b4437;
+  --ink:       #f2eee5;
+  --dim:       #c6bfb2;
+  --faint:     #9d9486;
+  --btn:       #2d2922;
+  --btn-hover: #383329;
+  --primary:   #f2eee5;
+  --primary-ink: #191713;
+  --warn:      #dcb06a;
+  --bad:       #eda3a3;
+  --ok:        #a9cd82;
+  --glass:     #3b3529;
+}
+
+
+:root:not([data-theme="dark"]) .card:has(#slotList),
+:root:not([data-theme="dark"]) .card:has(#dlcBody),
+:root:not([data-theme="dark"]) .card:has(#play) > .body {
+  box-shadow: 0 1px 3px rgb(45 42 50 / .06), 0 4px 12px rgb(45 42 50 / .05);
+}
+:root:not([data-theme="dark"]) .glass {
+  box-shadow: 0 2px 6px rgb(212 77 120 / .10), 0 10px 28px -10px rgb(212 77 120 / .22);
+}
+
+* { box-sizing: border-box; }
+
+/* The browser's own [hidden] rule loses to any inline display, and #dlcBody
+   carries style="display:flex"; without this rule the DLC installer renders
+   underneath its own "nothing can be installed" message. */
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  padding: 1.25rem var(--pad) 3rem;
+  background: var(--bg);
+  color: var(--ink);
+  font: var(--t-body)/1.6 var(--sans);
+}
+
+.wrap { max-width: 1040px; margin: 0 auto; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.75rem;
+}
+.topbar .home { color: var(--faint); text-decoration: none; font-size: var(--t-ui); }
+.topbar .home:hover { color: var(--ink); }
+
+#themeBtn {
+  font: inherit; font-size: var(--t-label); color: var(--dim);
+  background: transparent; border: var(--bw) solid var(--line2);
+  border-radius: 999px; padding: .3rem .8rem; cursor: pointer;
+}
+#themeBtn:hover { background: var(--btn-hover); color: var(--ink); }
+
+header { margin-bottom: 1.25rem; text-align: center; }
+h1.mark {
+  font-size: var(--t-title); font-weight: 600; letter-spacing: -.02em;
+  margin: 0 0 .25rem; color: var(--ink);
+}
+.tag { color: var(--dim); font-size: var(--t-body); }
+
+hr.rule { display: none; }
+
+.grid {
+  display: grid; gap: 1.5rem 1.5rem;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+}
+.col { display: contents; }
+
+.col > .card:has(#device),
+.col > .card:has(#play) {
+  grid-column: 1 / -1; justify-self: center;
+  width: min(100%, var(--device-width));
+}
+.col > .card:has(#slotList) { grid-column: 1; }
+.col > .card:has(#dlcBody)  { grid-column: 2; }
+
+/* Reorder cards without moving DOM hooks used by JavaScript. */
+.col > .card:has(#device)     { order: 1; }
+.col > .card:has(#play)       { order: 2; }
+.col > .card:has(#slotList)   { order: 4; }
+.col > .card:has(#dlcBody)    { order: 5; }
+
+@media (max-width: 880px) {
+  .grid { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
+  .col > .card:has(#slotList), .col > .card:has(#dlcBody) { grid-column: 1; }
+}
+
+.card {
+  background: var(--card);
+  border: var(--bw) solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.card > .head {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  padding: .65rem .9rem .6rem;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-label); font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--faint);
+}
+.card > .body { padding: .9rem; display: flex; flex-direction: column; gap: .8rem; }
+
+.card:has(#device) {
+  background: none; border: 0; border-radius: 0; overflow: visible;
+}
+.card:has(#device) > .head {
+  border-bottom: 0; padding: 0 .2rem .5rem;
+}
+
+#settingsBtn, #helpBtn {
+  font: inherit; font-size: var(--t-label); letter-spacing: .04em;
+  text-transform: none; color: var(--dim);
+  background: transparent; border: var(--bw) solid var(--line2);
+  border-radius: 999px; padding: .15rem .6rem; cursor: pointer;
+}
+#settingsBtn:hover, #helpBtn:hover { color: var(--ink); border-color: var(--dim); }
+
+/* placePanel() supplies inline top and left. */
+#settingsPanel:popover-open {
+  position: fixed;
+  display: flex; flex-direction: column; gap: .75rem;
+  width: min(22rem, calc(100vw - 1rem));
+  padding: .85rem .9rem;
+  background: var(--card); color: var(--ink);
+  border: var(--bw) solid var(--line2); border-radius: var(--r-card);
+  box-shadow: 0 8px 30px rgb(45 42 50 / .18);
+}
+#settingsPanel::backdrop { background: transparent; }
+/* Non-popover fallback stays inline. */
+#settingsPanel:not([popover]) { display: flex; flex-direction: column; gap: .75rem; }
+
+/* Keep the help control beside the title in the space-between header. */
+.helpdot {
+  flex: none; margin-right: auto;
+  width: 1.5em; height: 1.5em; padding: 0;
+  font: inherit; font-size: var(--t-label); line-height: 1;
+  color: var(--dim); background: transparent;
+  border: var(--bw) solid var(--line2); border-radius: 999px;
+  cursor: pointer;
+}
+.helpdot:hover { color: var(--ink); border-color: var(--dim); }
+
+#savesHelp:popover-open {
+  position: fixed;
+  display: flex; flex-direction: column; gap: .6rem;
+  width: min(24rem, calc(100vw - 1rem));
+  padding: .85rem .9rem;
+  background: var(--card); color: var(--ink);
+  border: var(--bw) solid var(--line2); border-radius: var(--r-card);
+  box-shadow: 0 8px 30px rgb(45 42 50 / .18);
+}
+#savesHelp::backdrop { background: transparent; }
+#savesHelp:not([popover]) { display: flex; flex-direction: column; gap: .6rem; }
+
+.card:has(#play) { background: none; border: 0; overflow: visible; }
+.card:has(#play) > .head { display: none; }
+.card:has(#play) > .body {
+  padding: .85rem .9rem; gap: .75rem;
+  background: var(--card); border: var(--bw) solid var(--line); border-radius: var(--r-card);
+}
+
+/* #statePill carries the device's name as well as its state, so it is the
+   one pill that can get long ("Tamagotchi Plus Color (Hexagontchi) · CPU
+   stopped"). Shrinking with an ellipsis keeps the header's buttons on the
+   row; the other pills keep their nowrap-at-natural-width behaviour. */
+#statePill { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+#slotsMore { width: 100%; margin-top: .15rem; color: var(--dim); }
+
+.pill {
+  font-size: var(--t-label); color: var(--faint);
+  background: transparent; border: var(--bw) solid var(--line2);
+  border-radius: 999px; padding: 2px 10px; white-space: nowrap;
+  font-weight: 500; letter-spacing: .02em; text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
+.pill:empty { display: none; }
+.pill.on   { color: var(--ok);   border-color: color-mix(in srgb, var(--ok) 45%, var(--line2)); }
+.pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--line2)); }
+.pill.bad  { color: var(--bad);  border-color: color-mix(in srgb, var(--bad) 45%, var(--line2)); }
+
+.row { display: flex; gap: .5rem; align-items: center; }
+.muted { color: var(--faint); font-size: var(--t-small); line-height: 1.65; }
+
+/* Match the generic card-body selector's specificity. */
+.body.device { position: relative; padding: 0; }
+
+/* The canvas owns its width so bezel sizing cannot fractional-shrink it. */
+.glass {
+  position: relative; background: var(--glass);
+  border: var(--bw) solid var(--line2); border-radius: var(--r-glass); padding: var(--bezel);
+  line-height: 0;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 6px 20px -6px rgb(0 0 0 / .12);
+}
+:root[data-theme="dark"] .glass {
+  box-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px -8px rgb(0 0 0 / .55);
+}
+.device[data-empty="1"] .glass { background: var(--card); }
+
+canvas {
+  display: block; width: min(var(--screen), 100%); height: auto; aspect-ratio: 1;
+  margin: 0 auto;
+  image-rendering: pixelated; background: var(--glass); border-radius: 4px;
+  touch-action: manipulation;
+}
+
+/* The preceding canvas width is the fallback where round() is unsupported. */
+@supports (width: round(down, 100%, 128px)) {
+  canvas { width: min(var(--screen), round(down, 100%, 128px)); }
+}
+
+/* Keep the drop-zone inset aligned with the bezel. */
+#drop {
+  position: absolute; inset: var(--bezel); z-index: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: .45rem; text-align: center; padding: 1.25rem; cursor: pointer;
+  background: var(--sunken); border: var(--bw) dashed var(--line2); border-radius: 4px;
+  line-height: 1.5;
+}
+#drop:hover, #drop.over { border-color: var(--faint); background: var(--btn-hover); }
+#drop .big { font-weight: 600; color: var(--ink); font-size: var(--t-item); }
+#drop .sub { color: var(--faint); font-size: var(--t-small); max-width: 38ch; }
+.device[data-empty="0"] #drop { display: none; }
+
+.keys { display: flex; justify-content: center; gap: 3.25rem; padding: 1.4rem 0 .25rem; }
+.key {
+  width: 66px; height: 66px; border-radius: 50%;
+  border: var(--bw) solid var(--line2); background: var(--btn); color: var(--dim);
+  font: inherit; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  user-select: none; -webkit-user-select: none; touch-action: none;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .05);
+}
+.key .l { font-size: var(--t-body); font-weight: 600; }
+.key .k { font-size: 10px; color: var(--faint); }
+.key:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--faint); }
+.key:disabled { opacity: .38; cursor: default; box-shadow: none; }
+.key[data-held="1"] {
+  background: var(--primary); color: var(--primary-ink); border-color: var(--primary);
+  box-shadow: none;
+}
+.key[data-held="1"] .k { color: var(--primary-ink); opacity: .7; }
+
+button, select, input[type=text] {
+  font: inherit; font-size: var(--t-ui); color: var(--ink);
+  background: var(--btn); border: var(--bw) solid var(--line2);
+  border-radius: var(--r-ctl); padding: .4rem .7rem; cursor: pointer;
+}
+button:hover:not(:disabled), select:hover { background: var(--btn-hover); }
+button:disabled { opacity: .38; cursor: default; }
+.primary {
+  flex: 1; background: var(--primary); color: var(--primary-ink);
+  border-color: var(--primary); font-weight: 600; padding: .5rem .7rem;
+}
+.primary:hover:not(:disabled) { background: var(--primary); opacity: .88; }
+.danger:hover:not(:disabled) { color: var(--bad); border-color: var(--bad); }
+
+
+#status {
+  font-size: var(--t-small); color: var(--dim); white-space: pre-wrap; min-height: 3.2em;
+  background: var(--sunken); border: var(--bw) solid var(--line);
+  border-radius: var(--r-ctl); padding: .55rem .7rem;
+  font-variant-numeric: tabular-nums;
+}
+#status.ok  { color: var(--ok); }
+#status.bad { color: var(--bad); }
+#awakeTier { font-size: var(--t-label); color: var(--faint); }
+#awakeTier:empty { display: none; }
+#soundVal  { font-size: var(--t-label); color: var(--faint); }
+
+#sound {
+  accent-color: var(--primary);
+  flex: 1; min-width: 6rem; cursor: pointer; vertical-align: middle;
+}
+
+#slotList { display: flex; flex-direction: column; gap: .5rem; }
+.slot {
+  border: var(--bw) solid var(--line); border-radius: var(--r-ctl); padding: .6rem .7rem;
+  background: var(--sunken); display: flex; flex-direction: column; gap: .45rem;
+}
+.slot.active {
+  border-color: var(--line2); background: var(--card);
+  box-shadow: inset 3px 0 0 0 var(--primary);
+  padding-left: .85rem;
+}
+.slot .top { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; }
+.slot .name { font-weight: 600; font-size: var(--t-item); overflow-wrap: anywhere; }
+.slot .sub { color: var(--faint); font-size: var(--t-label); font-variant-numeric: tabular-nums; }
+.slot .acts { display: flex; gap: .3rem; flex-wrap: wrap; }
+.slot .acts button { font-size: var(--t-small); padding: .2rem .5rem; }
+.slot .slotdev {
+  font: inherit; font-size: var(--t-label); color: var(--faint);
+  background: transparent; border: 1px solid transparent;
+  border-radius: 6px; padding: .05rem .2rem; min-width: 0; max-width: 55%;
+}
+.slot .slotdev:hover, .slot .slotdev:focus { border-color: var(--line2); color: var(--ink); background: var(--card); }
+.empty { color: var(--faint); font-size: var(--t-small); line-height: 1.65; }
+#quota { font-size: var(--t-label); color: var(--faint); }
+#quota .warn { color: var(--warn); }
+
+footer {
+  display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  margin-top: 2.25rem; padding-top: 1rem; border-top: 1px solid var(--line);
+  color: var(--faint); font-size: var(--t-small);
+}
+footer b { color: var(--warn); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.dlcrow {
+  display: flex; justify-content: space-between; gap: .75rem; align-items: baseline;
+  padding: .3rem .5rem; border-radius: 5px; font-size: var(--t-small);
+}
+.dlcrow:nth-child(odd) { background: var(--sunken); }
+.dlcrow > span:first-child { overflow-wrap: anywhere; }
+.dlcrow > span:last-child { white-space: nowrap; flex: none; font-variant-numeric: tabular-nums; }
+.dlcrow.dlcbad > span:first-child { color: var(--bad); }
+.dlcfull { color: var(--warn); }
+
+.dlctab {
+  font-size: var(--t-label); font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--faint);
+  margin: .65rem 0 .2rem;
+}
+.dlctab:first-child { margin-top: 0; }
+
+#dlcUsage, #dlcList, #dlcResults { display: flex; flex-direction: column; }
+#dlcList, #dlcResults { max-height: 15rem; overflow-y: auto; }
+#dlcResults { border-top: 1px solid var(--line); padding-top: .45rem; }
+
+/* Keep this block last: the media query adds no specificity over .glass. */
+@media (max-width: 592px) {
+  /* Use shared padding, not 100vw, to avoid scrollbar overflow. */
+  .col > .card:has(#device) {
+    justify-self: stretch; width: auto; margin-inline: calc(-1 * var(--pad));
+  }
+  .col > .card:has(#device) > .head { padding-inline: var(--pad); }
+
+  .glass {
+    background: none; border: 0; padding: 0;
+    border-radius: 0; box-shadow: none;
+  }
+  :root[data-theme="dark"] .glass { box-shadow: none; }
+  .device[data-empty="1"] .glass { background: none; }
+  canvas { border-radius: 0; }
+
+  /* Cover the opaque pre-frame canvas; move the text inset to padding. */
+  #drop { inset: 0; margin: 0; padding: 1.25rem var(--pad); border-radius: 0; }
+}
+
+/* Modal in production; [open] also supports the in-flow states harness. */
+#deviceDlg, #gpioLinkDlg, #helpDlg {
+  width: min(26rem, calc(100vw - 2rem));
+  padding: 1rem 1.05rem;
+  background: var(--card); color: var(--ink);
+  border: var(--bw) solid var(--line2); border-radius: var(--r-card);
+  box-shadow: 0 8px 30px rgb(45 42 50 / .18);
+}
+#deviceDlg[open], #gpioLinkDlg[open], #helpDlg[open] { display: flex; flex-direction: column; gap: .7rem; }
+#deviceDlg::backdrop, #gpioLinkDlg::backdrop, #helpDlg::backdrop { background: rgb(45 42 50 / .38); }
+#deviceDlg h2, #gpioLinkDlg h2, #helpDlg h2 { font-size: var(--t-item); margin: 0; }
+
+#helpBtn { margin-right: auto; }
+
+#helpDlg { width: min(34rem, calc(100vw - 2rem)); max-height: min(80vh, 36rem); overflow-y: auto; }
+.help-section h3 { font-size: var(--t-ui); margin: 0 0 .2rem; }
+
+#deviceList {
+  display: flex; flex-direction: column; gap: .4rem;
+  max-height: 46vh; overflow-y: auto;
+}
+.device-row {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .5rem .6rem;
+  border: var(--bw) solid var(--line); border-radius: var(--r-ctl);
+  cursor: pointer;
+}
+.device-row:hover { background: var(--btn-hover); }
+.device-row input { accent-color: var(--primary); }
+.device-row:has(input:checked) { border-color: var(--primary); }
+.device-row .name { flex: 1; font-size: var(--t-ui); }
+.device-row .aka { display: block; color: var(--faint); font-size: var(--t-small); }
+.device-row .size {
+  color: var(--faint); font-size: var(--t-small);
+  font-variant-numeric: tabular-nums;
+}

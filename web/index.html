@@ -1,0 +1,1207 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>tamaemu</title>
+<link rel="icon" type="image/png" href="maragotchifavicon.png">
+<link rel="stylesheet" href="theme.css">
+
+<div class="wrap">
+  <div class="topbar">
+    <a class="home" href="https://mara.gotchi.workers.dev/" target="_blank" rel="noopener">&larr; Back to Maragotchi</a>
+    <button id="themeBtn" type="button">Dark mode</button>
+  </div>
+
+  <header>
+    <h1 class="mark">tamaemu</h1>
+  </header>
+
+  <hr class="rule">
+
+  <div class="grid">
+    <div class="col">
+      <div class="card">
+        <div class="head">
+          <button id="settingsBtn" popovertarget="settingsPanel"
+                  title="never sleep, volume, game clock">Settings</button>
+          <button id="helpBtn" type="button">How to use</button>
+          <span class="pill" id="statePill">No firmware</span>
+        </div>
+        <div class="body device" id="device" data-empty="1" data-live="0">
+          <div class="glass">
+            <canvas id="screen" width="128" height="128"></canvas>
+            <div id="drop">
+              <div class="big">Drop a firmware dump here</div>
+              <div class="sub">or click to browse &mdash; a .bin dump of a device you own</div>
+              <input type="file" id="rom" accept=".bin,.BIN,application/octet-stream" hidden>
+            </div>
+          </div>
+          <div class="keys">
+            <button class="key" id="btnA" data-bit="1" disabled><span class="l">A</span><span class="k">Z</span></button>
+            <button class="key" id="btnB" data-bit="2" disabled><span class="l">B</span><span class="k">X</span></button>
+            <button class="key" id="btnC" data-bit="4" disabled><span class="l">C</span><span class="k">C</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="head"><span>Controls</span></div>
+        <div class="body">
+          <div class="row">
+            <button class="primary" id="play" disabled>Start</button>
+            <button id="saveNow" disabled title="write to the active slot now">Save</button>
+            <button id="reboot" disabled title="restart from the last saved flash">Reboot</button>
+          </div>
+          <div id="startRow" hidden>
+            <div class="muted" id="startNote" style="margin-bottom:.4rem"></div>
+            <div class="row">
+              <button id="startNew" style="flex:1"
+                      title="boot the staged dump as a new Tamagotchi; the running one is saved first">
+                Start new Tamagotchi</button>
+            </div>
+          </div>
+          <!-- states.html finds this card through #play and populates the settings fields. -->
+          <div id="settingsPanel" popover>
+          <div class="muted" id="awakeTier"></div>
+          <div class="row" style="gap:.5rem">
+            <input type="range" id="sound" min="0" max="100" step="1" value="100"
+                   autocomplete="off" aria-label="volume">
+            <button id="soundMute" style="min-width:7ch" title="silence it in one click">Mute</button>
+            <span id="soundVal" style="min-width:4.5ch;text-align:right;font-variant-numeric:tabular-nums">100%</span>
+          </div>
+          <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:.4rem">
+            <span style="color:var(--dim)">Game clock</span>
+            <span class="row" style="gap:.3rem">
+              <button id="speedDown" title="slower" disabled>&minus;</button>
+              <span id="speedVal" style="min-width:4.5ch;text-align:center;font-variant-numeric:tabular-nums">1&times;</span>
+              <button id="speedUp" title="faster" disabled>+</button>
+            </span>
+          </div>
+          <div class="muted" id="speedNote" hidden></div>
+          </div>
+          <div id="status">Loading&hellip;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <div class="head">
+          <span>Save slots</span>
+          <button class="helpdot" id="savesHelpBtn" popovertarget="savesHelp"
+                  aria-label="About your saves" title="about your saves">?</button>
+          <span class="pill" id="quota"></span>
+        </div>
+        <div id="savesHelp" popover>
+          <div class="muted">
+            Saves are browser specific and <b>WILL</b> be deleted if you clear
+            site data! Use the &ldquo;Export&rdquo; function to create back ups
+            of any save you care about.
+          </div>
+          <div class="muted">
+            This page does not and will not distribute any roms. Your roms are
+            handled locally on your computer and nothing is ever uploaded
+            anywhere. Yay, privacy!
+          </div>
+        </div>
+        <div class="body">
+          <div class="muted" id="storageNote" hidden></div>
+          <div id="slotList"><div class="empty">None yet.</div></div>
+          <div class="muted" id="persistNote"></div>
+          <div class="muted" id="linkNote" hidden></div>
+          <div class="row">
+            <button id="exportLive" style="flex:1" disabled
+                    title="download a portable .sav backup">Export this Tamagotchi&hellip;</button>
+          </div>
+          <div class="row">
+            <button id="importBtn" style="flex:1">Import a .sav&hellip;</button>
+            <button id="newRom" title="load a different firmware dump">New Tamagotchi&hellip;</button>
+            <input type="file" id="importFile" accept=".sav,.ram,.bin" multiple hidden>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="head"><span>DLC</span></div>
+        <div class="body">
+          <div class="muted" id="dlcUnsupported" hidden></div>
+          <div id="dlcBody" hidden style="display:flex;flex-direction:column;gap:.7rem">
+            <div class="dlctab">On the Tamagotchi now</div>
+            <div id="dlcUsage"></div>
+            <div class="row">
+              <button id="dlcAddBtn" style="flex:1">Add payload files&hellip;</button>
+              <button id="dlcClear" hidden>Clear</button>
+              <input type="file" id="dlcFiles" accept=".jpg,.jpeg,.bin" multiple hidden>
+            </div>
+            <div id="dlcList"></div>
+            <button class="primary" id="dlcInstall" disabled>Install</button>
+            <div id="dlcStatus" class="muted" hidden></div>
+            <div id="dlcResults" hidden></div>
+            <div class="row">
+              <button id="dlcApply" hidden style="flex:1">Apply to this Tamagotchi</button>
+              <button id="dlcDownload" hidden>Download .sav</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+
+  <footer>
+    <span>Made with &hearts; by <b>Mara</b></span>
+    <span>Maragotchi &middot; 2026</span>
+  </footer>
+</div>
+
+<dialog id="deviceDlg">
+  <h2>Which Tamagotchi is this?</h2>
+  <div id="deviceList"></div>
+  <div class="row" style="justify-content:flex-end">
+    <button id="deviceCancel">Cancel</button>
+    <button class="primary" id="deviceOk" autofocus>Start</button>
+  </div>
+</dialog>
+
+<!-- Keep shared device state outside .grid to avoid card placement rules. -->
+<select id="device-sel" hidden></select>
+
+<dialog id="gpioLinkDlg">
+  <h2>Connections for the Plus Color isn't supported yet</h2>
+  <div class="muted">
+    If you try to connect a Plus Color to another device it will time out
+    and fail. This behaviour is intentional. Sorry! (&#xFF61;&#x2022;&#x301;&#xFE3F;&#x2022;&#x300;&#xFF61;)
+  </div>
+  <div class="row" style="justify-content:flex-end">
+    <button class="primary" id="gpioLinkDlgOk" autofocus>OK</button>
+  </div>
+</dialog>
+
+<dialog id="helpDlg">
+  <h2>How to use</h2>
+
+  <div class="help-section">
+    <h3>Getting started</h3>
+    <div class="muted">
+      Drop a .bin firmware dump onto the screen, or click the screen to browse
+      for one. A dialog will ask which Tamagotchi the dump is for and the best
+      guess is preselected.
+    </div>
+  </div>
+
+  <div class="help-section">
+    <h3>Controls</h3>
+    <div class="muted">
+      Z, X and C are the keyboard controls for the buttons, these aren&rsquo;t
+      rebindable. You can also just click or tap the buttons, or use arrow keys
+      if you&rsquo;re feeling spicy.
+    </div>
+  </div>
+
+  <div class="help-section">
+    <h3>Time Controls</h3>
+    <div class="muted">
+      <b>+</b> and <b>&minus;</b> speed up and slow down time respectively.
+      They don&rsquo;t speed up animations or the pitch of the emulator.<br>
+      <b>0</b> resets the time back to normal.
+    </div>
+  </div>
+
+  <div class="help-section">
+    <h3>Saves</h3>
+    <div class="muted">
+      Autosaves are scheduled every 20 seconds. The saves live in your browser
+      storage so do <b>NOT</b> clear site data until you export your saves! You
+      can also manually save, yayyy! The ROMs you load in are stored in your
+      browser only and no data gets sent to me, or anyone else.
+    </div>
+  </div>
+
+  <div class="help-section">
+    <h3>DLC</h3>
+    <div class="muted">
+      Add files you wish to download and then hit install, just make sure
+      they&rsquo;re for the right device. <b>If you&rsquo;re downloading a VDP
+      make sure to select ALL VDP files, not just one.</b>
+    </div>
+  </div>
+
+  <div class="row" style="justify-content:flex-end">
+    <button class="primary" id="helpDlgOk" autofocus>OK</button>
+  </div>
+</dialog>
+
+<script type="module">
+import createTamaemu from '../build/tamaemu.mjs';
+import * as Slots from './slots.js';
+import * as Dlc from './dlc.js';
+import * as Device from './device.js';
+import * as Link from './link.js';
+
+const $ = id => document.getElementById(id);
+const statusEl = $('status');
+const ctx = $('screen').getContext('2d', { alpha: false });
+const say = (m, c) => { statusEl.textContent = m; statusEl.className = c ?? ''; };
+
+for (const id of ['rom', 'importFile']) $(id).value = '';
+
+const M = await createTamaemu();
+let romBytes = null, romName = '', running = false, booted = false;
+let romDevice = null;
+let slotId = null;
+let lastNote = '';
+
+let emuBase = 0;
+const emuTotal = () => emuBase + M._tw_rtc_seconds();
+
+const themeBtn = $('themeBtn');
+function applyTheme(t) {
+    if (t !== 'dark') t = 'light';
+    document.documentElement.dataset.theme = t;
+    themeBtn.textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+    localStorage.setItem('tamaemu.theme', t);
+}
+applyTheme(localStorage.getItem('tamaemu.theme')
+        ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+themeBtn.onclick = () =>
+    applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+
+$('gpioLinkDlgOk').onclick = () => $('gpioLinkDlg').close();
+$('gpioLinkDlg').addEventListener('close', () =>
+    localStorage.setItem('tamaemu.gpioLinkNote', '1'));
+
+$('helpBtn').onclick = () => $('helpDlg').showModal();
+$('helpDlgOk').onclick = () => $('helpDlg').close();
+
+function setState(text, cls) {
+    const el = $('statePill');
+    const named = booted || romBytes;
+    el.textContent = named ? `${titleOf($('device-sel').value)} · ${text}` : text;
+    el.className = 'pill' + (cls ? ' ' + cls : '');
+}
+
+const DEVICE_AKA = {
+    idl: 'also iDLE, Princess Spacy or 15th Anniversary',
+};
+
+const nDev = M._tw_device_count();
+const devices = [];
+for (let i = 0; i < nDev; i++)
+    devices.push({ name: M.UTF8ToString(M._tw_device_name(i)),
+                   title: M.UTF8ToString(M._tw_device_title(i)),
+                   size: M._tw_device_rom_size(i),
+                   aka: DEVICE_AKA[M.UTF8ToString(M._tw_device_name(i))] ?? '' });
+for (const d of devices) {
+    const o = document.createElement('option');
+    o.value = d.name; o.textContent = `${d.title}  ·  ${d.size / 1048576} MB`;
+    $('device-sel').append(o);
+}
+$('device-sel').value = localStorage.getItem('tamaemu.device') ?? '4u-plain';
+$('device-sel').onchange = () => {
+    localStorage.setItem('tamaemu.device', $('device-sel').value);
+    showAwakeTier();
+};
+const titleOf = n => devices.find(d => d.name === n)?.title ?? n;
+
+function setEmpty(isEmpty) { $('device').dataset.empty = isEmpty ? '1' : '0'; }
+function setLive(isLive)   { $('device').dataset.live  = isLive ? '1' : '0'; }
+
+const grabFlash = () => M.HEAPU8.slice(M._tw_flash_ptr(),
+                                       M._tw_flash_ptr() + M._tw_flash_size());
+const grabRam   = () => M.HEAPU8.slice(M._tw_ram_ptr(),
+                                       M._tw_ram_ptr() + M._tw_ram_size());
+
+function bootFlash(device, bytes) {
+    const want = devices.find(d => d.name === device)?.size;
+    if (!want) { say(`unknown device ${device}`, 'bad'); return false; }
+
+    let use = bytes, truncated = 0;
+    if (bytes.length > want) { use = bytes.subarray(0, want); truncated = bytes.length - want; }
+
+    const ptr = M._malloc(use.length);
+    M.HEAPU8.set(use, ptr);
+    const rc = M.ccall('tw_boot', 'number', ['string', 'number', 'number'],
+                       [device, ptr, use.length]);
+    M._free(ptr);
+    if (truncated) lastNote = `used the first ${want / 1048576} MB of a `
+                            + `${(bytes.length / 1048576).toFixed(0)} MB dump`;
+    else if (bytes.length < want)
+        lastNote = `${(want - bytes.length).toLocaleString()} bytes short of `
+                 + `${want / 1048576} MB - the rest is zeros`;
+    if (rc !== 0) { say(`boot failed (${rc})`, 'bad'); return false; }
+
+    booted = true;
+    for (const b of btns) b.disabled = false;
+    setHeld(0); pendingRelease = 0;
+    setEmpty(false); setLive(true);
+    showAwakeTier();
+    Dlc.refresh();
+    Link.bootHappened();   /* tw_boot detaches the link. */
+    if ((device === 'plus-color' || device === 'plus-color-hexa')
+        && localStorage.getItem('tamaemu.gpioLinkNote') !== '1'
+        && !$('gpioLinkDlg').open)
+        $('gpioLinkDlg').showModal();
+    showSpeed();
+    setState('Running', 'on');
+    return true;
+}
+
+function restoreRam(ram) {
+    if (!ram?.length) return;
+    const n = Math.min(ram.length, M._tw_ram_size());
+    M.HEAPU8.set(ram.subarray(0, n), M._tw_ram_ptr());
+}
+
+M._tw_set_awake(1);
+
+function showAwakeTier() {
+    const el = $('awakeTier');
+    const tier = booted ? M._tw_awake_tier() : 2;
+    if (tier === 2) {
+        el.textContent = '';
+        el.style.color = '';
+        el.title = '';
+    } else {
+        el.textContent = 'The screen stays lit, but this Tamagotchi still sleeps.';
+        el.style.color = 'var(--warn)';
+        el.title = "No idle-sleep gate is known for this device. Borrowing "
+                 + "another Tamagotchi's address corrupts A0RAM, so it is not guessed.";
+    }
+}
+
+const LEAD = 0.20;
+const MAX_LEAD = 0.45;
+
+let ac = null, gain = null, cursor = 0;
+const aStat = { underruns: 0, overruns: 0, pulls: 0, samples: 0 };
+let audioBuf = null;
+const AUDIO_MAX = 8192;
+
+const taper = v => v * v;
+
+let lastAudible = 1;
+
+function soundLevel() { return Math.min(1, Math.max(0, (+$('sound').value || 0) / 100)); }
+
+function audioWanted() { return soundLevel() > 0; }
+
+function applyVolume() {
+    const v = soundLevel();
+    $('soundVal').textContent = `${Math.round(v * 100)}%`;
+    $('soundMute').textContent = v > 0 ? 'Mute' : 'Unmute';
+    if (ac && gain) gain.gain.setTargetAtTime(taper(v), ac.currentTime, 0.01);
+    updateSettingsSummary();
+}
+
+function audioStart() {
+    if (!audioWanted()) return;
+    if (!ac) {
+        const Ctor = window.AudioContext || window.webkitAudioContext;
+        if (!Ctor) return;
+        ac = new Ctor({ latencyHint: 'interactive' });
+        gain = ac.createGain();
+        gain.gain.value = taper(soundLevel());
+        gain.connect(ac.destination);
+        audioBuf = M._malloc(AUDIO_MAX * 4);
+    }
+    if (ac.state === 'suspended') ac.resume();
+    cursor = 0;
+    M._tw_audio_reset();
+}
+
+function audioStop() {
+    if (ac && ac.state === 'running') ac.suspend();
+}
+
+function audioPump() {
+    if (!ac || ac.state !== 'running' || !audioWanted()) return;
+    const rate = ac.sampleRate;
+    const n = M._tw_audio_pull(audioBuf, AUDIO_MAX, rate);
+    if (n <= 0) return;
+
+    const now = ac.currentTime;
+    aStat.pulls++; aStat.samples += n;
+    if (cursor < now + 0.005) { aStat.underruns++; cursor = now + LEAD; }
+    else if (cursor > now + MAX_LEAD) { aStat.overruns++; cursor = now + LEAD; }
+
+    const buf = ac.createBuffer(1, n, rate);
+    buf.copyToChannel(new Float32Array(M.HEAPU8.buffer, audioBuf, n), 0);
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    src.connect(gain);
+    src.start(cursor);
+    cursor += n / rate;
+}
+
+{
+    const saved = parseFloat(localStorage.getItem('tamaemu.sound'));
+    const v = Number.isFinite(saved) ? Math.min(1, Math.max(0, saved)) : 1;
+    $('sound').value = Math.round(v * 100);
+    if (v > 0) lastAudible = v;
+}
+applyVolume();
+
+$('sound').oninput = () => {
+    const v = soundLevel();
+    if (v > 0) lastAudible = v;
+    localStorage.setItem('tamaemu.sound', String(v));
+    applyVolume();
+    if (v === 0) audioStop();
+    else if (running) audioStart();
+};
+
+$('soundMute').onclick = () => {
+    $('sound').value = Math.round((soundLevel() > 0 ? 0 : lastAudible || 1) * 100);
+    $('sound').oninput();
+};
+
+let storageDown = false;
+let saveHalted  = false;
+let liveName    = '';
+
+const esc = s => String(s).replace(/[&<>]/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+function setStorageNote(html, cls) {
+    const el = $('storageNote');
+    el.hidden = !html;
+    el.innerHTML = html ?? '';
+    el.style.color = cls === 'bad' ? 'var(--bad)' : cls === 'warn' ? 'var(--warn)' : '';
+}
+
+function applyStorageState() {
+    $('importBtn').disabled = storageDown;
+    $('importBtn').title = storageDown
+        ? 'Importing writes a save slot, and storage is unavailable.' : '';
+    $('exportLive').disabled = !booted;
+    $('exportLive').classList.toggle('primary', storageDown);
+
+    if (storageDown) {
+        const why = Slots.unavailableReason();
+        setStorageNote(
+            '<b>Your browser is not allowing access to storage.</b> You\'ll still '
+          + 'be able to play the emulator, but saves will not persist and '
+          + 'autosave will not occur. Export any save you care about. Private '
+          + 'browsing and blocked site data are the usual causes'
+          + (why ? ` (${esc(why)})` : '') + '.', 'bad');
+    } else if (saveHalted) {
+        setStorageNote(
+            '<b>Your browser has run out of storage space.</b> Export a save and '
+          + 'delete it to make room, then click <b>Save</b> to resume autosave.',
+            'bad');
+    } else setStorageNote('');
+}
+
+function showNoStorage() {
+    const list = $('slotList');
+    list.replaceChildren();
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = 'Unavailable - save slots need browser storage.';
+    list.append(d);
+    $('quota').textContent = '';
+    $('persistNote').textContent = '';
+    applyStorageState();
+}
+
+function storageError(what, err) {
+    say(`${what}: ${err?.message ?? err}\nnothing was changed.`, 'bad');
+}
+
+const fmtDate = t => new Date(t).toLocaleString(undefined,
+    { dateStyle: 'medium', timeStyle: 'short' });
+const fmtDur = s => s >= 3600 ? `${(s / 3600).toFixed(1)} h`
+                  : s >= 60   ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`;
+
+async function refreshSlots() {
+    if (storageDown) { showNoStorage(); return; }
+    try {
+        await renderSlots();
+    } catch (err) {
+        storageError('could not read the save slots', err);
+    }
+}
+
+const SLOT_PAGE = 5;
+let slotsExpanded = false;
+
+async function renderSlots() {
+    const all = await Slots.list();
+    const list = $('slotList');
+    list.replaceChildren();
+    if (!all.length) {
+        const d = document.createElement('div');
+        d.className = 'empty';
+        d.textContent = 'None yet. Drop a firmware dump on the screen and it will '
+                      + 'be saved here automatically.';
+        list.append(d);
+    }
+
+    let shown = all;
+    if (!slotsExpanded && all.length > SLOT_PAGE) {
+        shown = all.slice(0, SLOT_PAGE);
+        if (slotId != null && !shown.some(s => s.id === slotId)) {
+            const active = all.find(s => s.id === slotId);
+            if (active) shown = [active, ...shown.slice(0, SLOT_PAGE - 1)];
+        }
+    }
+
+    for (const s of shown) {
+        const el = document.createElement('div');
+        el.className = 'slot' + (s.id === slotId ? ' active' : '');
+        el.innerHTML = `
+          <div class="top">
+            <span class="name"></span>
+            <select class="slotdev" title="which Tamagotchi to boot this image as"></select>
+          </div>
+          <div class="sub">in-game ${fmtDur(s.emuSecs ?? 0)} · saved ${fmtDate(s.updated)}</div>
+          <div class="acts">
+            <button data-a="play">${s.id === slotId ? 'Reload' : 'Play'}</button>
+            <button data-a="export">Export</button>
+            <button data-a="rename">Rename</button>
+            <button class="danger" data-a="delete">Delete</button>
+          </div>`;
+        el.querySelector('.name').textContent = s.name;
+
+        const sel = el.querySelector('.slotdev');
+        for (const d of devices) {
+            if (d.size > (s.flashSize ?? 0)) continue;
+            const o = document.createElement('option');
+            o.value = d.name; o.textContent = d.title;
+            sel.append(o);
+        }
+        sel.value = s.device;
+        sel.onchange = async () => {
+            try {
+                await Slots.setDevice(s.id, sel.value);
+            } catch (err) {
+                sel.value = s.device;
+                storageError(`could not relabel "${s.name}"`, err);
+                return;
+            }
+            say(`"${s.name}" is now a ${titleOf(sel.value)}.`
+              + (s.id === slotId ? '\npress play on it to reboot as that device.' : ''), 'ok');
+            await refreshSlots();
+        };
+        el.querySelector('[data-a=play]').onclick   = () => playSlot(s.id);
+        el.querySelector('[data-a=export]').onclick = () => exportSlot(s.id);
+        el.querySelector('[data-a=rename]').onclick = () => renameSlot(s);
+        el.querySelector('[data-a=delete]').onclick = () => deleteSlot(s);
+        list.append(el);
+    }
+
+    if (all.length > SLOT_PAGE) {
+        const more = document.createElement('button');
+        more.id = 'slotsMore';
+        more.textContent = slotsExpanded
+            ? `Show fewer` : `Show all ${all.length} saves`;
+        more.onclick = () => { slotsExpanded = !slotsExpanded; refreshSlots(); };
+        list.append(more);
+    }
+
+    const est = await Slots.estimate();
+    $('quota').textContent = est?.usage != null
+        ? `${(est.usage / 1048576).toFixed(0)} MB used` : '';
+    $('persistNote').innerHTML = persistent
+        ? `Storage is persistent${est?.quota ? `, about ${(est.quota / 1073741824).toFixed(1)} GB available` : ''}.`
+        : '<b>The browser has not granted persistent storage</b>, so these can be '
+        + 'evicted. Export anything you care about.';
+    applyStorageState();
+}
+
+async function playSlot(id) {
+    const holder = await Link.canBoot(id);
+    if (holder === 0) return;
+    if (holder !== true) {
+        const el = $('linkNote');
+        el.textContent = 'That save is open in another tamaemu window - '
+                       + 'export it there and import a copy if you want two.';
+        el.hidden = false;
+        noteHold = Date.now() + 6000;
+        say('that save is open in another tamaemu window.', 'bad');
+        return;
+    }
+    setRunning(false);
+    let rec;
+    try { rec = await Slots.load(id); }
+    catch (err) {
+        say(`could not read that slot: ${err?.message ?? err}\n`
+          + `it has NOT been changed. try Export on it, or reload the page.`, 'bad');
+        return;
+    }
+    const { meta, flash, ram } = rec;
+    $('device-sel').value = meta.device;
+    if (!bootFlash(meta.device, flash)) return;
+    restoreRam(ram);
+    slotId = id;
+    Link.claim(id);
+    emuBase = meta.emuSecs ?? 0;
+    liveName = meta.name;
+    M._tw_flash_clean();
+    draw();
+    await refreshSlots();
+    say(`playing "${meta.name}" - ${titleOf(meta.device)}`, 'ok');
+    setRunning(true);
+}
+
+async function startFromRom() {
+    if (booted) await persistNow('manual');
+
+    const device = booted ? (romDevice ?? $('device-sel').value)
+                          : $('device-sel').value;
+    $('device-sel').value = device;
+    setRunning(false);
+    if (!bootFlash(device, romBytes)) return;
+    $('startRow').hidden = true;
+    emuBase = 0;
+    const name = (romName.replace(/\.[^.]+$/, '') || titleOf(device)).slice(0, 40);
+    liveName = name;
+
+    let saved = false;
+    try {
+        slotId = await Slots.create({
+            name, device, flash: grabFlash(), ram: grabRam(), emuSecs: 0,
+        });
+        saved = true;
+        Link.claim(slotId);
+    } catch (err) {
+        slotId = null;
+        lastNote = `not saved (${err?.message ?? err}) - use Export to keep it`;
+    }
+
+    M._tw_flash_clean();
+    draw();
+    await refreshSlots();
+    say((saved ? `new Tamagotchi saved as "${name}".` : `running "${name}".`)
+      + (lastNote ? `\n${lastNote}.` : ''), saved ? 'ok' : 'bad');
+    lastNote = '';
+    romBytes = null;
+    romName = '';
+    romDevice = null;
+    setRunning(true);
+}
+
+async function renameSlot(s) {
+    const name = prompt('Name for this slot:', s.name);
+    if (name == null || !name.trim()) return;
+    try { await Slots.rename(s.id, name.trim().slice(0, 40)); }
+    catch (err) { storageError(`could not rename "${s.name}"`, err); return; }
+    if (s.id === slotId) liveName = name.trim().slice(0, 40);
+    await refreshSlots();
+}
+
+async function deleteSlot(s) {
+    if (!confirm(`Delete "${s.name}" (${titleOf(s.device)}, in-game `
+               + `${fmtDur(s.emuSecs ?? 0)})?\n\n`
+               + `This cannot be undone. Export it first if you might want it.`)) return;
+    try { await Slots.remove(s.id); }
+    catch (err) { storageError(`could not delete "${s.name}"`, err); return; }
+    if (slotId === s.id) { slotId = null; setRunning(false); }
+    await refreshSlots();
+    say(`deleted "${s.name}".`);
+}
+
+async function exportSlot(id) {
+    let rec;
+    try { rec = await Slots.load(id); }
+    catch (err) {
+        say(`could not read that slot, so nothing was exported: ${err?.message ?? err}\n`
+          + `the slot itself has not been changed.`, 'bad');
+        return;
+    }
+    const { meta, flash } = rec;
+    const safe = meta.name.replace(/[^\w.-]+/g, '_') || 'tamaemu';
+    download(`${safe}.sav`, flash);
+    say(`exported "${meta.name}" as ${safe}.sav`, 'ok');
+}
+
+function exportLive() {
+    if (!booted) return;
+    const safe = (liveName || titleOf($('device-sel').value) || 'tamaemu')
+                 .replace(/[^\w.-]+/g, '_') || 'tamaemu';
+    download(`${safe}.sav`, grabFlash());
+    say(`exported the running Tamagotchi as ${safe}.sav`
+      + `\nthe file opens in the desktop emulator.`, 'ok');
+}
+$('exportLive').onclick = exportLive;
+
+function download(filename, bytes) {
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async ev => {
+    const files = [...ev.target.files];
+    ev.target.value = '';
+    if (!files.length) return;
+    let flash = null, ram = null, base = '';
+    for (const f of files) {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        if (devices.some(d => d.size === bytes.length)) {
+            flash = bytes; base = f.name.replace(/\.sav$/i, '').replace(/\.[^.]+$/, '');
+        } else if (bytes.length <= 65536) ram = bytes;
+    }
+    if (!flash) { say('no flash image among those files - a .sav is 4 or 8 MB.', 'bad'); return; }
+
+    const fits = devices.filter(d => d.size === flash.length);
+    const { pick } = preselectDevice(base, fits);
+    const device = await Device.choose({
+        list: fits, preselect: pick, confirm: 'Import as',
+    });
+    if (!device) return;
+
+    try {
+        await Slots.create({ name: (base || 'imported').slice(0, 40), device,
+                             flash, ram: ram ?? new Uint8Array(0) });
+    } catch (err) {
+        storageError('could not import that save', err);
+        return;
+    }
+    await refreshSlots();
+    say(`imported as "${base || 'imported'}" - ${titleOf(device)}`
+      + (ram ? ' with its exact-session .ram sidecar' : ''), 'ok');
+};
+
+const AUTOSAVE_MS = 20000;
+let savedNote = '';
+
+async function persistNow(why) {
+    if (!booted || slotId == null || storageDown) return;
+    if (saveHalted && why !== 'manual') return;
+    const dirty = M._tw_flash_dirty();
+    try {
+        await Slots.update(slotId, {
+            ram: grabRam(),
+            flash: dirty ? grabFlash() : undefined,
+            emuSecs: emuTotal(),
+        });
+        if (dirty) M._tw_flash_clean();
+        if (saveHalted) { saveHalted = false; applyStorageState(); }
+        savedNote = `saved ${new Date().toLocaleTimeString()}` + (dirty ? ' (incl. flash)' : '');
+        if (why === 'manual') say(savedNote, 'ok');
+        if (why !== 'pagehide') await refreshSlots();
+    } catch (err) {
+        if (Slots.isQuotaError(err)) {
+            saveHalted = true;
+            applyStorageState();
+            say(`SAVE FAILED: no storage space left.\nautosave is stopped - export `
+              + `this Tamagotchi now, then make room and press Save.`, 'bad');
+        } else {
+            say(`SAVE FAILED: ${err.message}\nexport this slot before you lose it.`, 'bad');
+        }
+    }
+}
+
+setInterval(() => persistNow('timer'), AUTOSAVE_MS);
+/* Mobile Safari may skip beforeunload; save on lifecycle events instead. */
+document.addEventListener('visibilitychange', () => { if (document.hidden) persistNow('hidden'); });
+addEventListener('pagehide', () => persistNow('pagehide'));
+$('saveNow').onclick = () => persistNow('manual');
+
+/* Most-specific first: find() stops at the first filename match. */
+const NAME_HINTS = [
+    [/hexa/i,                          'plus-color-hexa'],
+    [/melody/i,                        'id-melody'],
+    [/4u\s*\+|4uplus|tg16_4u\+/i,      '4u'],
+    [/idl\w*|id[_ -]?l\b|spacy|anniv\w*|tg14.*idl/i, 'idl'],
+    [/color/i,                         'plus-color'],
+    [/\b4u\b|tg16_4u/i,                '4u-plain'],
+    [/\bid\b|id_|_id/i,                'id'],
+    [/\bp'?s\b|_ps|ps_/i,              'ps'],
+];
+
+function preselectDevice(fileName, candidates) {
+    const hinted = NAME_HINTS.find(([re]) => re.test(fileName));
+    if (hinted && candidates.some(d => d.name === hinted[1]))
+        return { pick: hinted[1], why: 'from the filename' };
+    return { pick: candidates[0].name, why: '' };
+}
+
+$('drop').onclick = () => $('rom').click();
+$('newRom').onclick = () => $('rom').click();
+$('rom').onchange = e => e.target.files[0] && loadRom(e.target.files[0]);
+
+const dropTarget = $('device');
+for (const ev of ['dragenter', 'dragover'])
+    dropTarget.addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); });
+for (const ev of ['dragleave', 'drop'])
+    dropTarget.addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); });
+dropTarget.addEventListener('drop', e => e.dataTransfer.files[0] && loadRom(e.dataTransfer.files[0]));
+
+async function loadRom(file) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+
+    if (bytes.length < 1048576) {
+        say(`${file.name} · ${bytes.length.toLocaleString()} bytes\n`
+          + `Not a valid rom.`, 'bad');
+        $('rom').value = '';
+        return;
+    }
+
+    const list = [...devices].sort(
+        (a, b) => Math.abs(a.size - bytes.length) - Math.abs(b.size - bytes.length));
+    const { pick } = preselectDevice(file.name, list);
+
+    const chosen = await Device.choose({
+        list, preselect: pick, confirm: booted ? 'Stage' : 'Start as',
+    });
+
+    /* Reset before returning so the same file can be selected again. */
+    $('rom').value = '';
+    if (!chosen) return;
+
+    romBytes = bytes;
+    romName = file.name;
+    romDevice = chosen;
+
+    let note = '';
+    const want = devices.find(d => d.name === chosen).size;
+    if (booted && want < bytes.length)
+        note = `\nthis dump is ${(bytes.length / 1048576).toFixed(0)} MB and that `
+             + `Tamagotchi takes ${want / 1048576} MB - the first `
+             + `${want / 1048576} MB will be used.`;
+    else if (booted && want > bytes.length)
+        note = `\nthis dump is ${(want - bytes.length).toLocaleString()} bytes short `
+             + `of that Tamagotchi's ${want / 1048576} MB - the rest is zero-filled.`;
+
+    $('play').disabled = false;
+
+    if (booted) {
+        $('startNote').textContent =
+            `Staged: ${file.name} - will boot as ${titleOf(chosen)}.`;
+        $('startRow').hidden = false;
+        say(`${file.name} · ${bytes.length.toLocaleString()} bytes${note}\n`
+          + `press "Start new Tamagotchi" below - the running one is saved `
+          + `first, and keeps its own slot.`);
+    } else {
+        $('device-sel').value = chosen;
+        setState('Ready', '');
+        say(`${file.name} · ${bytes.length.toLocaleString()} bytes${note}`);
+        await startFromRom();
+    }
+}
+
+function showSpeed() {
+    const m = booted ? M._tw_speed() : 1;
+    $('speedVal').textContent = `${m}×`;
+    $('speedDown').disabled = !booted || m <= 1;
+    $('speedUp').disabled = !booted || m >= 600;
+
+    const note = $('speedNote');
+    if (m <= 1) { note.hidden = true; note.textContent = ''; }
+    else {
+        note.hidden = false;
+        note.innerHTML = `<b>The Tamagotchi ages ${m}× faster</b> while this is set. `
+          + `The picture and sound run at normal speed.`;
+    }
+    updateSettingsSummary();
+}
+
+function updateSettingsSummary() {
+    const btn = $('settingsBtn');
+    if (!btn) return;
+    const bits = [];
+    const m = booted ? M._tw_speed() : 1;
+    if (m > 1) bits.push(`${m}×`);
+    if (soundLevel() === 0) bits.push('muted');
+    btn.textContent = bits.length ? `Settings · ${bits.join(' · ')}` : 'Settings';
+    btn.style.color = m > 1 ? 'var(--warn)' : '';
+    btn.title = bits.length
+        ? `never sleep, volume, game clock - ${bits.join(', ')}`
+        : 'never sleep, volume, game clock';
+}
+
+function placePanel(panelId, btnId) {
+    const panel = $(panelId), btn = $(btnId);
+    const r = btn.getBoundingClientRect();
+    panel.style.margin = '0';
+    const w = panel.offsetWidth || 300;
+    const left = Math.max(8, Math.min(r.left, innerWidth - w - 8));
+    panel.style.left = `${left}px`;
+    panel.style.top  = `${Math.min(r.bottom + 6, innerHeight - panel.offsetHeight - 8)}px`;
+}
+
+/* Without popover support, the popover attribute does not hide these panels. */
+const POPOVER_OK = Object.hasOwn(HTMLElement.prototype, 'popover');
+for (const [panelId, btnId] of [['settingsPanel', 'settingsBtn'],
+                                ['savesHelp', 'savesHelpBtn']]) {
+    if (POPOVER_OK) {
+        $(panelId).addEventListener('beforetoggle', e => {
+            if (e.newState === 'open') placePanel(panelId, btnId);
+        });
+        addEventListener('resize', () => {
+            if ($(panelId).matches(':popover-open')) placePanel(panelId, btnId);
+        });
+    } else {
+        $(panelId).removeAttribute('popover');
+        $(panelId).hidden = true;
+        $(btnId).onclick = () => { $(panelId).hidden = !$(panelId).hidden; };
+    }
+}
+
+$('speedUp').onclick   = () => { M._tw_speed_step(+1); showSpeed(); };
+$('speedDown').onclick = () => { M._tw_speed_step(-1); showSpeed(); };
+
+$('play').onclick = async () => {
+    if (!booted) { if (romBytes) await startFromRom(); return; }
+    setRunning(!running);
+};
+$('startNew').onclick = async () => { if (romBytes) await startFromRom(); };
+$('reboot').onclick = async () => {
+    if (slotId == null) return;
+    if (!confirm('Reboot from the last saved flash? Anything since the last save '
+               + 'is lost.')) return;
+    await playSlot(slotId);
+};
+
+function setRunning(on) {
+    running = on;
+    $('play').textContent = on ? 'Pause' : (booted ? 'Resume' : 'Start');
+    $('saveNow').disabled = $('reboot').disabled = !booted || slotId == null;
+    const why = storageDown
+        ? 'Storage is unavailable, so this Tamagotchi has no slot behind it - use Export.'
+        : 'This Tamagotchi has no slot behind it.';
+    const noSlot = booted && slotId == null;
+    $('saveNow').title = noSlot ? why : 'write to the active slot now';
+    $('reboot').title  = noSlot ? why : 'restart from the last saved flash';
+    applyStorageState();
+    setLive(on);
+    setState(on ? 'Running' : (booted ? 'Paused' : 'No firmware'), on ? 'on' : '');
+    /* Starting satisfies autoplay policy; pausing must silence active audio. */
+    if (on) { audioStart(); last = performance.now(); acc = 0; requestAnimationFrame(loop); }
+    else audioStop();
+}
+
+/* Run the device at 60 Hz regardless of the display's refresh rate. */
+const FRAME_MS = 1000 / 60, MAX_STEP_MS = 250, MAX_FRAMES = 6;
+let last = 0, acc = 0, fpsT = 0, fpsN = 0;
+
+function loop(now) {
+    if (!running) return;
+    requestAnimationFrame(loop);
+    let dt = now - last; last = now;
+    /* Clamp hidden-tab gaps to keep catch-up work bounded. */
+    if (dt > MAX_STEP_MS) dt = MAX_STEP_MS;
+    acc += dt;
+    let n = 0;
+    while (acc >= FRAME_MS && n < MAX_FRAMES) { acc -= FRAME_MS; n++; }
+    if (acc > FRAME_MS * MAX_FRAMES) acc = 0;
+
+    if (n) {
+        M._tw_buttons(held);
+        for (let i = 0; i < n; i++) M._tw_run_frame();
+        /* Hold quick taps for one frame so the core sees them. */
+        if (pendingRelease) { setHeld(held & ~pendingRelease); pendingRelease = 0; }
+        draw();
+        /* Pull audio after advancing the emulated time it covers. */
+        audioPump();
+        Link.pump();
+        fpsN += n;
+    }
+    if (now - fpsT >= 500) {
+        const fps = fpsN * 1000 / (now - fpsT); fpsT = now; fpsN = 0;
+        /* Use the RTC-backed total so speed changes and resumed slots stay aligned. */
+        /* Show NFC points raised by either the firmware or the N key. */
+        const nfc = M._tw_nfc_probe_on() ? ' · store point in field' : '';
+        say(`${fps.toFixed(0)} fps · ${fmtDur(emuTotal())} in-game${nfc}`
+          + (savedNote ? `\n${savedNote}` : ''));
+    }
+    if (M._tw_stopped()) {
+        setRunning(false);
+        setState('CPU stopped', 'bad');
+        say(`the CPU stopped - this firmware is probably not a `
+          + `${titleOf($('device-sel').value)}.\n`
+          + `pick the right Tamagotchi and press start again.`, 'bad');
+    }
+}
+
+/* tw_frame returns canvas-ready RGBA bytes. */
+const imgData = new ImageData(128, 128);
+function draw() {
+    const p = M._tw_frame();
+    imgData.data.set(M.HEAPU8.subarray(p, p + 128 * 128 * 4));
+    ctx.putImageData(imgData, 0, 0);
+}
+
+const btns = [$('btnA'), $('btnB'), $('btnC')];
+let held = 0, pendingRelease = 0;
+function setHeld(mask) {
+    held = mask & 7;
+    for (const b of btns) b.dataset.held = (held & +b.dataset.bit) ? '1' : '0';
+}
+const press = bit => { pendingRelease &= ~bit; setHeld(held | bit); };
+const release = bit => { pendingRelease |= bit; };
+
+const KEYS = { KeyZ: 1, ArrowLeft: 1, KeyX: 2, ArrowDown: 2, KeyC: 4, ArrowRight: 4 };
+
+/* Equal handles the unshifted key used to type plus on most layouts. */
+addEventListener('keydown', e => {
+    /* Modal key events still reach document listeners. */
+    if ($('deviceDlg').open) return;
+    if (!booted || e.repeat) return;
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if (e.code === 'Equal' || e.code === 'NumpadAdd')      { M._tw_speed_step(+1); showSpeed(); return; }
+    if (e.code === 'Minus' || e.code === 'NumpadSubtract') { M._tw_speed_step(-1); showSpeed(); return; }
+    if (e.code === 'Digit0' || e.code === 'Numpad0')       { M._tw_speed_reset(); showSpeed(); return; }
+    /* N toggles the store NFC point for manually triggered touch spots. */
+    if (e.code === 'KeyN') { M._tw_nfc_probe(M._tw_nfc_probe_on() ? 0 : 1); return; }
+});
+
+addEventListener('keydown', e => {
+    if ($('deviceDlg').open) return;
+    const bit = KEYS[e.code];
+    if (!bit || e.repeat || !booted) return;
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    e.preventDefault(); press(bit);
+});
+addEventListener('keyup', e => {
+    const bit = KEYS[e.code];
+    if (!bit) return;
+    e.preventDefault(); release(bit);
+});
+
+for (const b of btns) {
+    const bit = +b.dataset.bit;
+    b.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        /* Pointer capture can fail after the pointer is gone; still deliver the press. */
+        try { b.setPointerCapture(e.pointerId); } catch {}
+        press(bit);
+    });
+    b.addEventListener('pointerup', () => release(bit));
+    b.addEventListener('pointercancel', () => { pendingRelease = 0; setHeld(held & ~bit); });
+    b.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+/* Focus loss may omit keyup, so release held buttons immediately. */
+addEventListener('blur', () => { pendingRelease = 0; setHeld(0); });
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { pendingRelease = 0; setHeld(0); }
+    else last = performance.now();
+});
+
+window.tamaemu = {
+    M, Slots,
+    get slotId() { return slotId; },
+    flash: grabFlash, ram: grabRam,
+    persist: () => persistNow('manual'),
+    get storage() {
+        return { down: storageDown, saveHalted, slot: slotId,
+                 reason: Slots.unavailableReason() || null };
+    },
+    get nfc() {
+        return { inField: !!M._tw_nfc_probe_on(), hasBingoFlow: !!M._tw_has_bingo() };
+    },
+    probe: on => M._tw_nfc_probe(on ? 1 : 0),
+    get audio() {
+        return ac ? { state: ac.state, rate: ac.sampleRate,
+                      lead: +(cursor - ac.currentTime).toFixed(3),
+                      wanted: audioWanted(), volume: soundLevel(),
+                      gain: +gain.gain.value.toFixed(4), ...aStat }
+                  : { state: 'not created', wanted: audioWanted(),
+                      volume: soundLevel() };
+    },
+    audioResetStats: () => { aStat.underruns = aStat.overruns = aStat.pulls = aStat.samples = 0; },
+    set pitch(m) { M._tw_audio_pitch(m); },
+    fnv: bytes => { let h = 2166136261;
+        for (let i = 0; i < bytes.length; i++) h = Math.imul(h ^ bytes[i], 16777619);
+        return (h >>> 0).toString(16); },
+    link: { stats: Link.stats, selftest: Link.selftest },
+};
+
+/* Probe storage before initializing anything that depends on it. */
+storageDown = !(await Slots.probe());
+const persistent = storageDown ? false : await Slots.requestPersistence();
+applyStorageState();
+showAwakeTier();
+showSpeed();
+
+/* Keep save replacement here; the DLC module receives device access by callback. */
+Device.init();
+Dlc.init({
+    M,
+    deviceName:  () => booted ? $('device-sel').value : '',
+    deviceTitle: () => titleOf($('device-sel').value),
+    liveFlash:   grabFlash,
+    say,
+    storageAvailable: () => !storageDown,
+    download: (bytes) => {
+        const meta = slotId != null ? `slot${slotId}` : 'tamaemu';
+        download(`${meta}-dlc.sav`, bytes);
+        say('Downloaded. The Tamagotchi itself is unchanged.', 'ok');
+    },
+    /* Reboot with the installed flash before updating its slot. */
+    applyImage: async (image) => {
+        const ram = grabRam();
+        /* Capture age before boot resets the RTC counter. */
+        const carried = emuTotal();
+        const device = $('device-sel').value;
+        setRunning(false);
+        if (!bootFlash(device, image)) return;
+        emuBase = carried;
+        restoreRam(ram);
+        M._tw_flash_clean();
+        draw();
+        let kept = true;
+        if (slotId != null) {
+            /* MEMFS installs bypass the flash dirty flag; write the image directly. */
+            try {
+                await Slots.update(slotId, { flash: image.slice(), ram: grabRam(),
+                                             emuSecs: emuTotal() });
+            } catch (err) {
+                /* Keep pacing the rebooted device even if its slot update fails. */
+                kept = false;
+                say(`applied to the running Tamagotchi, but the slot could not be `
+                  + `updated: ${err?.message ?? err}\nthe slot still holds the OLD `
+                  + `image - Export before you reload.`, 'bad');
+            }
+        }
+        await refreshSlots();
+        if (kept)
+            say(slotId != null
+                ? 'Applied. The Tamagotchi rebooted with the new content; your Tamagotchi was kept.'
+                : 'Applied to the running device. There is no slot to keep it in - '
+                + 'use Download or Export before you close this tab.', 'ok');
+        setRunning(true);
+    },
+});
+
+/* Link transport is DOM-agnostic; this page owns UI and holds refusal messages
+   across link-state repaints. */
+let noteHold = 0;
+Link.init(M, {
+    device:  () => booted ? $('device-sel').value : '',
+    running: () => running,
+    frame:   () => Number(M._tw_cycles()),
+    slot:    () => slotId,
+    onState: (state, n) => {
+        if (Date.now() < noteHold) return;
+        const el = $('linkNote');
+        el.textContent = {
+            linked:  'Linked to another tamaemu window.',
+            paused:  'The other Tamagotchi is paused - bring its window back on screen.',
+            toomany: `${n + 1} tamaemu windows are open - link play needs exactly two.`,
+            mixed:   'The other window runs a Tamagotchi this one can\'t connect to - link play needs a matching pair (like two iDs, or an iD and an iD Melody).',
+            nolink:  "This Tamagotchi's link isn't supported between two windows yet.",
+            idle:    'Another tamaemu window is open. Run the same Tamagotchi in both to link.',
+        }[state] ?? '';
+        el.hidden = !el.textContent;
+    },
+    /* The lower window ID keeps a slot claimed by two simultaneous boots. */
+    onSlotLost: () => {
+        /* Clear slotId before controls update; an update already in flight
+           cannot be cancelled. */
+        slotId = null;
+        setRunning(false);
+        refreshSlots();
+        say('another window took over this save - pick a slot to continue.', 'bad');
+    },
+});
+
+await refreshSlots();
+say('Drop a firmware dump on the screen to begin.');
+</script>

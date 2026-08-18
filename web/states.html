@@ -1,0 +1,491 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tamaemu - design states</title>
+<link rel="icon" type="image/png" href="maragotchifavicon.png">
+<link rel="stylesheet" href="theme.css">
+<!--
+  Development-only fixture harness. Cloned cards follow production markup;
+  hand-written runtime rows and staged production messages can drift.
+-->
+<style>
+  body { max-width: none; }
+  .harness-bar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; gap: .5rem; align-items: center; flex-wrap: wrap;
+    padding: .6rem .75rem; margin: -1.25rem -1.25rem 1.25rem;
+    background: var(--card); border-bottom: 1px solid var(--line);
+  }
+  .harness-bar h1 { font-size: 13px; font-weight: 600; margin: 0 auto 0 0; }
+  /* theme.css scopes .home to .topbar. */
+  .harness-bar a { color: var(--faint); text-decoration: none; font-size: 13px; }
+  .harness-bar a:hover { color: var(--ink); }
+  /* Keep non-modal fixture dialogs in flow. */
+  .state dialog { position: static; margin: 0; }
+  .harness-grid {
+    display: grid; gap: 1.25rem;
+    grid-template-columns: repeat(auto-fill, minmax(var(--w, 420px), 1fr));
+    align-items: start;
+  }
+  .state { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+  .state > .label {
+    font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--faint); font-weight: 600;
+  }
+  .state > .note { font-size: 11.5px; color: var(--faint); margin: -.2rem 0 .1rem; }
+  .state[data-hard="1"] > .label::after {
+    content: " · hard to reach"; color: var(--warn); letter-spacing: 0;
+    text-transform: none; font-weight: 400;
+  }
+</style>
+
+<div class="harness-bar">
+  <h1>tamaemu design states</h1>
+  <button id="theme">Dark mode</button>
+  <button id="width">Narrow (mobile)</button>
+  <a class="home" href="index.html" style="margin-left:.5rem">open the real page &rarr;</a>
+</div>
+
+<div class="harness-grid" id="grid"></div>
+
+<script type="module">
+/* Clone production markup; DOMParser keeps its scripts inert. */
+const src = new DOMParser().parseFromString(
+    await (await fetch('./index.html')).text(), 'text/html');
+
+/* Find cards by production IDs, not display copy. */
+function card(sel) {
+    for (const c of src.querySelectorAll('.card')) {
+        if (!c.querySelector(sel)) continue;
+        const clone = c.cloneNode(true);
+        /* Render cloned popovers inline in this catalogue. */
+        for (const p of clone.querySelectorAll('[popover]')) p.removeAttribute('popover');
+        return clone;
+    }
+    throw new Error(`no card containing "${sel}" in index.html - was it removed?`);
+}
+
+/* Clone the standalone dialog and open it for the fixture. */
+function dialog(sel) {
+    const d = src.querySelector(sel);
+    if (!d) throw new Error(`no ${sel} in index.html - was it removed?`);
+    const clone = d.cloneNode(true);
+    clone.setAttribute('open', '');
+    return clone;
+}
+
+const grid = document.getElementById('grid');
+const $ = (el, sel) => el.querySelector(sel);
+
+function show(label, node, { note = '', hard = false } = {}) {
+    const wrap = document.createElement('div');
+    wrap.className = 'state';
+    if (hard) wrap.dataset.hard = '1';
+    const l = document.createElement('div'); l.className = 'label'; l.textContent = label;
+    wrap.append(l);
+    if (note) { const n = document.createElement('div'); n.className = 'note'; n.textContent = note; wrap.append(n); }
+    wrap.append(node);
+    grid.append(wrap);
+}
+
+/* Draw a fake frame; this harness never runs firmware. */
+function paint(canvas) {
+    const g = canvas.getContext('2d');
+    const img = g.createImageData(128, 128);
+    const put = (x, y, r, gr, b) => {
+        const i = (y * 128 + x) * 4;
+        img.data[i] = r; img.data[i+1] = gr; img.data[i+2] = b; img.data[i+3] = 255;
+    };
+    for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
+        const band = y < 26 || y > 101;
+        if (band) put(x, y, 250, 226, 150);
+        else if (y > 34 && y < 94 && x > 8 && x < 120) put(x, y, 255, 255, 255);
+        else put(x, y, 168, 226, 236);
+    }
+    for (let y = 48; y < 60; y++) for (let x = 24; x < 104; x++)
+        if ((x + y) % 7 < 4) put(x, y, 26, 35, 96);
+    for (let y = 66; y < 78; y++) for (let x = 34; x < 94; x++)
+        if ((x * y) % 5 < 3) put(x, y, 26, 35, 96);
+    g.putImageData(img, 0, 0);
+}
+
+{
+    const c = card('#device');
+    show('Device - no firmware', c, { note: 'First run. The drop zone is the screen.' });
+}
+{
+    const c = card('#device');
+    /* Match setState()'s device-and-state pill. */
+    $(c, '#statePill').textContent = 'Tamagotchi 4U · Ready';
+    show('Device - ready', c, { note: 'A dump is picked but not started.' });
+}
+for (const [label, pill, cls, note] of [
+    ['Device - running', 'Running', 'on', 'The bezel only goes black once there is a picture.'],
+    ['Device - paused', 'Paused', '', 'Same picture, quiet pill.'],
+    ['Device - CPU stopped', 'CPU stopped', 'bad', 'Almost always the wrong device for the dump.'],
+]) {
+    const c = card('#device');
+    const dev = $(c, '#device');
+    dev.dataset.empty = '0'; dev.dataset.live = pill === 'Running' ? '1' : '0';
+    $(c, '#statePill').textContent = 'Tamagotchi 4U · ' + pill;
+    $(c, '#statePill').className = 'pill' + (cls ? ' ' + cls : '');
+    for (const b of c.querySelectorAll('.key')) b.disabled = false;
+    grid.append(document.createComment(''));
+    show(label, c, { note, hard: pill === 'CPU stopped' });
+    paint($(c, '#screen'));
+}
+{
+    const c = card('#device');
+    const dev = $(c, '#device');
+    dev.dataset.empty = '0'; dev.dataset.live = '1';
+    $(c, '#statePill').textContent = 'Tamagotchi 4U · Running';
+    $(c, '#statePill').className = 'pill on';
+    for (const b of c.querySelectorAll('.key')) b.disabled = false;
+    $(c, '#btnB').dataset.held = '1';
+    show('Device - button held', c, { note: 'B pressed. The held key gets the filled primary style.' });
+    paint($(c, '#screen'));
+}
+
+{
+    const c = card('#play');
+    $(c, '#status').textContent = 'Drop a firmware dump on the screen to begin.';
+    show('Controls - nothing loaded', c, { note: 'Every action disabled.' });
+}
+{
+    const c = card('#play');
+    for (const b of ['#play','#saveNow','#reboot','#exportLive','#speedUp','#speedDown'])
+        if ($(c, b)) $(c, b).disabled = false;
+    $(c, '#play').textContent = 'Pause';
+    $(c, '#status').textContent = '60 fps · 4 min in-game\nsaved 11:42:07';
+    show('Controls - running, saved', c, { note: 'The ordinary case.' });
+}
+{
+    const c = card('#play');
+    for (const b of ['#play','#saveNow','#reboot','#exportLive','#speedUp','#speedDown'])
+        if ($(c, b)) $(c, b).disabled = false;
+    $(c, '#play').textContent = 'Pause';
+    $(c, '#status').textContent = '60 fps · 4 min in-game\nsaved 11:42:07';
+    $(c, '#startNote').textContent =
+        "Staged: fw_tg15_EN_v56_2012-11-03_Ps123.bin - will boot as Tamagotchi P's.";
+    $(c, '#startRow').hidden = false;
+    show('Controls - firmware staged while running', c,
+         { note: 'A second dump dropped onto a device that is already running. The '
+               + 'transport above still belongs to the running device (it says Pause, '
+               + 'not Start), so the staged dump gets its own button. The filename lives '
+               + 'here rather than in #status because the frame loop rewrites #status '
+               + 'twice a second.', hard: true });
+}
+{
+    const c = card('#play');
+    for (const b of ['#play','#exportLive','#speedUp','#speedDown']) if ($(c, b)) $(c, b).disabled = false;
+    $(c, '#play').textContent = 'Pause';
+    $(c, '#saveNow').title = $(c, '#reboot').title = 'This device has no slot behind it.';
+    $(c, '#status').textContent = '60 fps · 12 s in-game';
+    show('Controls - running, no slot', c,
+         { note: 'Save and Reboot need a slot; their tooltips say why.', hard: true });
+}
+{
+    const c = card('#play');
+    for (const b of ['#play','#saveNow','#reboot','#exportLive','#speedUp','#speedDown'])
+        if ($(c, b)) $(c, b).disabled = false;
+    $(c, '#play').textContent = 'Pause';
+    $(c, '#speedVal').innerHTML = '60&times;';
+    $(c, '#speedNote').hidden = false;
+    $(c, '#speedNote').innerHTML =
+        '<b>The Tamagotchi ages 60&times; faster</b> while this is set. The picture and sound '
+      + 'run at normal speed.';
+    $(c, '#status').textContent = '60 fps · 2 h in-game';
+    show('Controls - accelerated clock', c, { note: 'The warning only appears above 1x.' });
+}
+{
+    const c = card('#play');
+    for (const b of ['#play','#exportLive']) if ($(c, b)) $(c, b).disabled = false;
+    $(c, '#awakeTier').textContent = 'The screen stays lit, but this device still sleeps.';
+    $(c, '#awakeTier').style.color = 'var(--warn)';
+    $(c, '#status').textContent = '60 fps · 30 s in-game';
+    show('Controls - keep-awake has no effect', c, {
+        note: 'Unreachable today: all eight devices have a sleep gate. Kept so a '
+            + 'device added later without one still shows the warning.', hard: true });
+}
+
+/* FIXTURE: renderSlots() builds slot rows at runtime. Keep this copy in step. */
+
+const slotRow = ({ name, device, sub, active = false, primaryLabel = 'Play' }) => `
+  <div class="slot${active ? ' active' : ''}">
+    <div class="top">
+      <span class="name">${name}</span>
+      <select class="slotdev"><option>${device}</option></select>
+    </div>
+    <div class="sub">${sub}</div>
+    <div class="acts">
+      <button>${primaryLabel}</button><button>Export</button>
+      <button>Rename</button><button class="danger">Delete</button>
+    </div>
+  </div>`;
+
+{
+    const c = card('#slotList');
+    $(c, '#quota').textContent = '';
+    $(c, '#persistNote').textContent = '';
+    show('Save slots - none yet', c, { note: 'First run.' });
+}
+{
+    const c = card('#slotList');
+    $(c, '#slotList').innerHTML =
+        slotRow({ name: 'Kuchipatchi', device: "Tamagotchi P's", active: true,
+                  primaryLabel: 'Reload', sub: 'in-game 3 h · saved 3 Aug 2026, 11:42' })
+      + slotRow({ name: 'fw_tg16_4U', device: 'Tamagotchi 4U',
+                  sub: 'in-game 26 min · saved 2 Aug 2026, 09:07' })
+      + slotRow({ name: 'TMGC+C_Hexagontchi1', device: 'Tamagotchi Plus Color (Hexagontchi)',
+                  sub: 'in-game 48 s · saved 1 Aug 2026, 22:30' });
+    $(c, '#quota').textContent = '24 MB used';
+    $(c, '#persistNote').textContent = 'Storage is persistent, about 10.0 GB available.';
+    $(c, '#exportLive').disabled = false;
+    show('Save slots - several, one active', c,
+         { note: 'Long device names must not clip the dropdown.' });
+}
+{
+    const c = card('#slotList');
+    /* FIXTURE: renderSlots() shows five rows before the reveal. */
+    $(c, '#slotList').innerHTML =
+        slotRow({ name: 'Kuchipatchi', device: "Tamagotchi P's", active: true,
+                  primaryLabel: 'Reload', sub: 'in-game 3 h · saved 3 Aug 2026, 11:42' })
+      + slotRow({ name: 'fw_tg16_4U', device: 'Tamagotchi 4U',
+                  sub: 'in-game 26 min · saved 2 Aug 2026, 09:07' })
+      + slotRow({ name: 'TMGC+C_Hexagontchi1', device: 'Tamagotchi Plus Color (Hexagontchi)',
+                  sub: 'in-game 48 s · saved 1 Aug 2026, 22:30' })
+      + slotRow({ name: 'fw_tg14_en_v53_2012_04_30_iDLE', device: 'Tamagotchi iD L',
+                  sub: 'in-game 4 min · saved 1 Aug 2026, 20:11' })
+      + slotRow({ name: 'Mametchi', device: "Tamagotchi P's",
+                  sub: 'in-game 6 h · saved 31 Jul 2026, 18:02' })
+      + '<button id="slotsMore">Show all 23 saves</button>';
+    $(c, '#quota').textContent = '212 MB used';
+    $(c, '#persistNote').textContent = 'Storage is persistent, about 10.0 GB available.';
+    $(c, '#exportLive').disabled = false;
+    show('Save slots - capped, more hidden', c,
+         { note: 'Only the newest five are drawn, so a long list cannot push the DLC '
+               + 'card far down the page. The button carries the total so "Show all" '
+               + 'says how many saves it reveals.',
+           hard: true });
+}
+{
+    const c = card('#slotList');
+    $(c, '#slotList').innerHTML =
+        '<div class="empty">Unavailable - save slots need browser storage.</div>';
+    $(c, '#quota').textContent = '';
+    $(c, '#persistNote').textContent = '';
+    $(c, '#importBtn').disabled = true;
+    $(c, '#exportLive').disabled = false;
+    $(c, '#exportLive').classList.add('primary');
+    $(c, '#storageNote').hidden = false;
+    $(c, '#storageNote').style.color = 'var(--bad)';
+    $(c, '#storageNote').innerHTML =
+        '<b>This browser is not storing anything for this page.</b> The device '
+      + 'still runs, but nothing is kept &mdash; no save slots, no autosave, and '
+      + 'the Tamagotchi is gone when this tab closes. Use <b>Export this device</b> to '
+      + 'keep a copy you own. Private browsing and blocked site data are the '
+      + 'usual causes (SecurityError).';
+    show('Save slots - storage unavailable', c,
+         { note: 'Export becomes the primary button. Requires blocking IndexedDB to see.',
+           hard: true });
+}
+{
+    const c = card('#slotList');
+    $(c, '#slotList').innerHTML =
+        slotRow({ name: 'Mametchi', device: "Tamagotchi P's", active: true,
+                  primaryLabel: 'Reload', sub: 'in-game 6 h · saved 3 Aug 2026, 10:02' });
+    $(c, '#quota').textContent = '4.9 GB used';
+    $(c, '#persistNote').textContent = 'Storage is persistent, about 4.9 GB available.';
+    $(c, '#exportLive').disabled = false;
+    $(c, '#storageNote').hidden = false;
+    $(c, '#storageNote').style.color = 'var(--bad)';
+    $(c, '#storageNote').innerHTML =
+        '<b>Out of storage space, so autosave has stopped</b> rather than failing '
+      + 'again every 20 seconds. Export a slot and delete it to make room, then '
+      + 'press <b>Save</b> &mdash; autosave resumes as soon as one write succeeds.';
+    show('Save slots - quota exhausted', c,
+         { note: 'Autosave halted, manual Save still retries. Requires filling the disk to see.',
+           hard: true });
+}
+{
+    const c = card('#slotList');
+    $(c, '#linkNote').hidden = false;
+    $(c, '#linkNote').textContent = 'Linked to another tamaemu window.';
+    show('Save slots - linked', c,
+         { note: 'Two windows, same device, both running.' });
+}
+{
+    const c = card('#slotList');
+    $(c, '#linkNote').hidden = false;
+    $(c, '#linkNote').textContent =
+        'The other device is paused - bring its window back on screen.';
+    show('Save slots - peer paused', c, {
+        note: 'The other window is minimised or covered; its rAF (and so its '
+            + 'emulator) is stopped while its heartbeat keeps arriving.',
+        hard: true });
+}
+{
+    const c = card('#slotList');
+    $(c, '#linkNote').hidden = false;
+    $(c, '#linkNote').textContent =
+        '3 tamaemu windows are open - link play needs exactly two.';
+    show('Save slots - too many devices', c, {
+        note: 'A third window disarms the link everywhere rather than '
+            + 'silently picking two of three.' });
+}
+{
+    const c = card('#slotList');
+    $(c, '#linkNote').hidden = false;
+    $(c, '#linkNote').textContent =
+        'That save is open in another tamaemu window - export it there and '
+      + 'import a copy if you want two.';
+    show('Save slots - slot held by another window', c, {
+        note: 'Refused before boot; nothing was overwritten. Latched here for '
+            + 'six seconds because #status is rewritten twice a second while '
+            + 'a device runs.',
+        hard: true });
+}
+
+/* FIXTURE: dlc.js builds usage, list, and result rows at runtime. */
+
+const dlcRow = (left, right, cls = '') =>
+    `<div class="dlcrow${cls ? ' ' + cls : ''}"><span>${left}</span><span class="${
+        cls === 'dlcbad' ? 'muted' : right.includes('/') && cls === 'full' ? 'dlcfull' : 'muted'
+     }">${right}</span></div>`;
+
+const usageRows = (pairs) => pairs.map(([l, u, m]) =>
+    `<div class="dlcrow"><span>${l}</span><span class="${u >= m ? 'dlcfull' : 'muted'}">${u}/${m}</span></div>`
+).join('');
+
+{
+    const c = card('#dlcBody');
+    $(c, '#dlcUnsupported').hidden = false;
+    $(c, '#dlcUnsupported').textContent =
+        'No content stores are mapped for Tamagotchi Plus Color, so nothing can be installed onto it.';
+    show('DLC - device has no content stores', c,
+         { note: 'Both Plus Colors: content arrives as typed codes, not records.' });
+}
+{
+    const c = card('#dlcBody');
+    $(c, '#dlcBody').hidden = false;
+    $(c, '#dlcUsage').innerHTML = usageRows([
+        ['Meals', 4, 20], ['Snacks', 15, 15], ['Clothing', 2, 5], ['Accessories', 0, 10],
+        ['Items', 10, 10], ['Wallpapers', 3, 10], ['Games', 2, 2], ['VDP destinations', 0, 2],
+    ]);
+    $(c, '#dlcList').innerHTML = '<div class="muted">No payloads added yet.</div>';
+    show('DLC - idle, some stores full', c,
+         { note: 'Full counts go amber. This is the resting state.' });
+}
+{
+    const c = card('#dlcBody');
+    $(c, '#dlcBody').hidden = false;
+    $(c, '#dlcUsage').innerHTML = usageRows([['Meals', 4, 20], ['Snacks', 15, 15], ['Games', 2, 2]]);
+    $(c, '#dlcList').innerHTML =
+        '<div class="dlctab">Snacks (2)</div>'
+      + dlcRow('DL_iDNS_こどものひケーキ.jpg', '')
+      + dlcRow('Christmas cake', '')
+      + '<div class="dlctab">Wallpapers (1)</div>'
+      + dlcRow('Gotchi Reform - starry night', '')
+      + '<div class="dlctab">Cannot be installed on this device (2)</div>'
+      + dlcRow('yumemiru-en-pierce-1-3.jpg', 'unroutable', 'dlcbad')
+      + dlcRow('EZ_Gotchi.jpg', 'unroutable', 'dlcbad');
+    $(c, '#dlcInstall').disabled = false;
+    $(c, '#dlcClear').hidden = false;
+    show('DLC - payloads added', c,
+         { note: 'Grouped by the tab the core assigns. Japanese names must render.' });
+}
+{
+    const c = card('#dlcBody');
+    $(c, '#dlcBody').hidden = false;
+    $(c, '#dlcUsage').innerHTML = usageRows([['Meals', 4, 20], ['Snacks', 15, 15], ['Games', 2, 2]]);
+    $(c, '#dlcList').innerHTML = '<div class="muted">No payloads added yet.</div>';
+    $(c, '#dlcStatus').hidden = false;
+    $(c, '#dlcStatus').style.color = 'var(--ok)';
+    $(c, '#dlcStatus').textContent =
+        'Placed 27 of 97. 70 could not be placed - see below. Nothing has changed yet: '
+      + "the counts above are still the device's. Choose Apply to keep this, or Download for a file.";
+    $(c, '#dlcResults').hidden = false;
+    $(c, '#dlcResults').innerHTML =
+        dlcRow('Children&#39;s Day cake', 'Snacks')
+      + dlcRow('Diva chocolates', 'Snacks')
+      + dlcRow('DecoPierceLoader1.0', 'kind 10 store full or item too big', 'dlcbad')
+      + dlcRow('DecoPierceLoader1.0', 'kind 8 store full or item too big', 'dlcbad');
+    $(c, '#dlcApply').hidden = false;
+    $(c, '#dlcDownload').hidden = false;
+    show('DLC - installed, pending apply', c, {
+        note: 'Nothing has changed yet: the counts above still describe the device, '
+            + 'and the copy has to make that clear.', hard: true });
+}
+
+/* FIXTURE: device.js builds these rows at runtime. Keep this copy in step. */
+
+/* Give each fixture chooser an independent radio group. */
+let deviceRowGroup = 0;
+function deviceRows(node, items, checked) {
+    const list = $(node, '#deviceList');
+    const group = `device-fixture-${deviceRowGroup++}`;
+    list.replaceChildren();
+    /* FIXTURE: Match device.js's row markup. */
+    for (const [name, title, size, aka] of items) {
+        const row = document.createElement('label');
+        row.className = 'device-row';
+        row.innerHTML = '<input type="radio">'
+                      + '<span class="name"><span class="t"></span>'
+                      + '<span class="aka"></span></span><span class="size"></span>';
+        row.querySelector('input').name = group;
+        row.querySelector('input').checked = name === checked;
+        row.querySelector('.t').textContent = title;
+        row.querySelector('.aka').textContent = aka ?? '';
+        row.querySelector('.size').textContent = size;
+        list.append(row);
+    }
+}
+
+const EIGHT_MB = [
+    ['ps', "Tamagotchi P's", '8 MB'],
+    ['idl', 'Tamagotchi iD L', '8 MB', 'also iDLE, Princess Spacy or 15th Anniversary'],
+    ['4u', 'Tamagotchi 4U+', '8 MB'], ['4u-plain', 'Tamagotchi 4U', '8 MB'],
+    ['id', 'Tamagotchi iD', '4 MB'], ['id-melody', 'Tamagotchi iD Melody', '4 MB'],
+    ['plus-color', 'Tamagotchi Plus Color', '4 MB'],
+    ['plus-color-hexa', 'Tamagotchi Plus Color (Hexagontchi)', '4 MB'],
+];
+
+{
+    const d = dialog('#deviceDlg');
+    deviceRows(d, EIGHT_MB, '4u');
+    $(d, '#deviceOk').textContent = 'Start as Tamagotchi 4U+';
+    show('Device chooser', d, {
+        note: 'Eight candidates. The confirm button names the device that '
+            + 'will boot. The iD L row carries the retail names that share '
+            + 'its firmware.',
+        hard: true });
+}
+{
+    const d = dialog('#gpioLinkDlg');
+    show('Plus Color link notice', d, {
+        note: 'Shown once ever, on the first Plus Color boot. Any close (OK '
+            + 'or Esc) sets the flag.',
+        hard: true });
+}
+
+/* Match production theme storage and fallback behavior. */
+const themeBtn = document.getElementById('theme');
+const apply = t => {
+    if (t !== 'dark') t = 'light';
+    document.documentElement.dataset.theme = t;
+    themeBtn.textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+    localStorage.setItem('tamaemu.theme', t);
+};
+apply(localStorage.getItem('tamaemu.theme')
+   ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+themeBtn.onclick = () =>
+    apply(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+
+const widthBtn = document.getElementById('width');
+let narrow = false;
+widthBtn.onclick = () => {
+    narrow = !narrow;
+    document.getElementById('grid').style.setProperty('--w', narrow ? '340px' : '420px');
+    widthBtn.textContent = narrow ? 'Wide (desktop)' : 'Narrow (mobile)';
+};
+</script>
