@@ -113,7 +113,7 @@ function render() {
     $('dlcClear').hidden = !files.length;
 
     if (!files.length) {
-        el.innerHTML = '<div class="muted">No payloads added yet.</div>';
+        el.innerHTML = '<div class="muted">No files added yet.</div>';
         return;
     }
 

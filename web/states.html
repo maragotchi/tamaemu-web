@@ -372,7 +372,7 @@ const usageRows = (pairs) => pairs.map(([l, u, m]) =>
         ['Meals', 4, 20], ['Snacks', 15, 15], ['Clothing', 2, 5], ['Accessories', 0, 10],
         ['Items', 10, 10], ['Wallpapers', 3, 10], ['Games', 2, 2], ['VDP destinations', 0, 2],
     ]);
-    $(c, '#dlcList').innerHTML = '<div class="muted">No payloads added yet.</div>';
+    $(c, '#dlcList').innerHTML = '<div class="muted">No files added yet.</div>';
     show('DLC - idle, some stores full', c,
          { note: 'Full counts go amber. This is the resting state.' });
 }
@@ -398,7 +398,7 @@ const usageRows = (pairs) => pairs.map(([l, u, m]) =>
     const c = card('#dlcBody');
     $(c, '#dlcBody').hidden = false;
     $(c, '#dlcUsage').innerHTML = usageRows([['Meals', 4, 20], ['Snacks', 15, 15], ['Games', 2, 2]]);
-    $(c, '#dlcList').innerHTML = '<div class="muted">No payloads added yet.</div>';
+    $(c, '#dlcList').innerHTML = '<div class="muted">No files added yet.</div>';
     $(c, '#dlcStatus').hidden = false;
     $(c, '#dlcStatus').style.color = 'var(--ok)';
     $(c, '#dlcStatus').textContent =

@@ -30,8 +30,8 @@
           <div class="glass">
             <canvas id="screen" width="128" height="128"></canvas>
             <div id="drop">
-              <div class="big">Drop a firmware dump here</div>
-              <div class="sub">or click to browse &mdash; a .bin dump of a device you own</div>
+              <div class="big">Drop your rom here!</div>
+              <div class="sub">or click to browse your computer</div>
               <input type="file" id="rom" accept=".bin,.BIN,application/octet-stream" hidden>
             </div>
           </div>
@@ -232,7 +232,7 @@
 </dialog>
 
 <script type="module">
-import createTamaemu from '../build/tamaemu.mjs';
+import createTamaemu from './tamaemu.mjs';
 import * as Slots from './slots.js';
 import * as Dlc from './dlc.js';
 import * as Device from './device.js';
