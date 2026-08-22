@@ -1,6 +1,4 @@
 emsdk/
-build/
-*.wasm
 *.o
 *.bin
 *.BIN
