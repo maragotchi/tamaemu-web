@@ -33,3 +33,26 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+  itch:
+    if: vars.ITCH_TARGET != ''
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Butler
+        run: |
+          curl --fail --location \
+            https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default \
+            --output butler.zip
+          unzip -q butler.zip -d butler
+          chmod +x butler/butler
+
+      - name: Upload to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          ./butler/butler push dist "${{ vars.ITCH_TARGET }}:html5" \
+            --userversion "${{ github.sha }}"
