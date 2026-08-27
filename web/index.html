@@ -111,9 +111,11 @@
           <div class="row">
             <button id="exportLive" style="flex:1" disabled
                     title="download a portable .sav backup">Export this Tamagotchi&hellip;</button>
+            <button id="exportSession" style="flex:1" disabled
+                    title="download an exact in-progress save">Export in-progress save&hellip;</button>
           </div>
           <div class="row">
-            <button id="importBtn" style="flex:1">Import a .sav&hellip;</button>
+            <button id="importBtn" style="flex:1">Import a save&hellip;</button>
             <button id="newRom" title="load a different firmware dump">New Tamagotchi&hellip;</button>
             <input type="file" id="importFile" accept="application/octet-stream" multiple hidden>
           </div>
@@ -160,6 +162,15 @@
   <div class="row" style="justify-content:flex-end">
     <button id="deviceCancel">Cancel</button>
     <button class="primary" id="deviceOk" autofocus>Start</button>
+  </div>
+</dialog>
+
+<dialog id="replaceSaveDlg" aria-labelledby="replaceSaveTitle">
+  <h2 id="replaceSaveTitle">Replace current save?</h2>
+  <div class="muted" id="replaceSaveText" style="white-space:pre-line"></div>
+  <div class="row" style="justify-content:flex-end">
+    <button id="replaceSaveKeep" type="button" autofocus>Keep my save</button>
+    <button class="danger" id="replaceSaveConfirm" type="button">Replace</button>
   </div>
 </dialog>
 
@@ -237,6 +248,9 @@ import * as Slots from './slots.js';
 import * as Dlc from './dlc.js';
 import * as Device from './device.js';
 import * as Link from './link.js';
+import { decodeTamaSave, encodeTamaSave } from './tamasave.js';
+import { applyTamaSaveImport } from './session-import.js';
+import { tryCaptureSession } from './session-capture.js';
 
 const $ = id => document.getElementById(id);
 const statusEl = $('status');
@@ -246,6 +260,10 @@ const say = (m, c) => { statusEl.textContent = m; statusEl.className = c ?? ''; 
 for (const id of ['rom', 'importFile']) $(id).value = '';
 
 const M = await createTamaemu();
+const SESSION_EXPORTS = ['_tw_session_size', '_tw_session_write',
+                         '_tw_session_restore', '_tw_session_reset_host'];
+if (SESSION_EXPORTS.some(name => typeof M[name] !== 'function'))
+    console.warn('[session] snapshot bridge is unavailable; saves will use flash and RAM until it is rebuilt.');
 let romBytes = null, romName = '', running = false, booted = false;
 let romDevice = null;
 let slotId = null;
@@ -310,6 +328,30 @@ const grabFlash = () => M.HEAPU8.slice(M._tw_flash_ptr(),
                                        M._tw_flash_ptr() + M._tw_flash_size());
 const grabRam   = () => M.HEAPU8.slice(M._tw_ram_ptr(),
                                        M._tw_ram_ptr() + M._tw_ram_size());
+
+function grabSession() {
+    const n = M._tw_session_size();
+    if (n <= 0) throw new Error('the emulator is not ready to save a session');
+    const ptr = M._malloc(n);
+    try {
+        if (M._tw_session_write(ptr, n) !== n)
+            throw new Error('could not capture the session point');
+        return M.HEAPU8.slice(ptr, ptr + n);
+    } finally {
+        M._free(ptr);
+    }
+}
+
+function restoreSession(session) {
+    if (!(session instanceof Uint8Array) || !session.length) return false;
+    const ptr = M._malloc(session.length);
+    try {
+        M.HEAPU8.set(session, ptr);
+        return M._tw_session_restore(ptr, session.length) === 1;
+    } finally {
+        M._free(ptr);
+    }
+}
 
 function bootFlash(device, bytes) {
     const want = devices.find(d => d.name === device)?.size;
@@ -474,6 +516,7 @@ function applyStorageState() {
     $('importBtn').title = storageDown
         ? 'Importing writes a save slot, and storage is unavailable.' : '';
     $('exportLive').disabled = !booted;
+    $('exportSession').disabled = !booted || slotId == null;
     $('exportLive').classList.toggle('primary', storageDown);
 
     if (storageDown) {
@@ -629,10 +672,16 @@ async function playSlot(id) {
           + `it has NOT been changed. try Export on it, or reload the page.`, 'bad');
         return;
     }
-    const { meta, flash, ram } = rec;
+    const { meta, flash, ram, session } = rec;
     $('device-sel').value = meta.device;
     if (!bootFlash(meta.device, flash)) return;
-    restoreRam(ram);
+    const restoredSession = restoreSession(session);
+    if (!restoredSession) restoreRam(ram);
+    /* A session never revives held buttons or scheduled browser audio. */
+    pendingRelease = 0;
+    setHeld(0);
+    cursor = ac ? ac.currentTime : 0;
+    M._tw_audio_reset();
     slotId = id;
     Link.claim(id);
     emuBase = meta.emuSecs ?? 0;
@@ -640,7 +689,10 @@ async function playSlot(id) {
     M._tw_flash_clean();
     draw();
     await refreshSlots();
-    say(`playing "${meta.name}" - ${titleOf(meta.device)}`, 'ok');
+    say(restoredSession
+        ? `playing "${meta.name}" from its saved session point`
+        : `Session point unavailable; restored flash and RAM.\nplaying "${meta.name}" - ${titleOf(meta.device)}`,
+        restoredSession ? 'ok' : 'warn');
     setRunning(true);
 }
 
@@ -659,8 +711,10 @@ async function startFromRom() {
 
     let saved = false;
     try {
+        const session = tryCaptureSession(grabSession);
         slotId = await Slots.create({
-            name, device, flash: grabFlash(), ram: grabRam(), emuSecs: 0,
+            name, device, flash: grabFlash(), ram: grabRam(),
+            session, emuSecs: 0,
         });
         saved = true;
         Link.claim(slotId);
@@ -725,6 +779,65 @@ function exportLive() {
 }
 $('exportLive').onclick = exportLive;
 
+async function exportSession() {
+    if (slotId == null) return;
+    const { meta, flash, ram, session } = await Slots.load(slotId);
+    const safe = (meta.name || 'tamaemu').replace(/[^\w.-]+/g, '_');
+    download(`${safe}.tamasave`, encodeTamaSave({
+        lineage: meta.lineage, revision: meta.revision, savedUtcMs: Date.now(),
+        device: meta.device, flash, ram, session,
+    }));
+    await Slots.update(slotId, { lastExportedRevision: meta.revision });
+    say(`exported "${meta.name}" as ${safe}.tamasave`, 'ok');
+}
+$('exportSession').onclick = () => exportSession().catch(err => storageError('could not export session', err));
+
+async function updateHandoffFile(id) {
+    const rec = await Slots.load(id);
+    const handle = rec.meta.handoffHandle;
+    if (!handle?.createWritable) return false;
+    const permission = await handle.queryPermission?.({ mode: 'readwrite' });
+    if (permission !== 'granted' && await handle.requestPermission?.({ mode: 'readwrite' }) !== 'granted') return false;
+    const bytes = encodeTamaSave({ lineage: rec.meta.lineage, revision: rec.meta.revision,
+        savedUtcMs: Date.now(), device: rec.meta.device, flash: rec.flash, ram: rec.ram, session: rec.session });
+    const writable = await handle.createWritable();
+    await writable.write(bytes); await writable.close();
+    await Slots.update(id, { lastExportedRevision: rec.meta.revision });
+    return true;
+}
+
+const replaceSaveDlg = $('replaceSaveDlg');
+const replaceSaveText = $('replaceSaveText');
+const replaceSaveKeep = $('replaceSaveKeep');
+const replaceSaveConfirm = $('replaceSaveConfirm');
+let finishReplaceSave = null;
+
+replaceSaveKeep.onclick = () => replaceSaveDlg.close('');
+replaceSaveConfirm.onclick = () => replaceSaveDlg.close('replace');
+replaceSaveDlg.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') { ev.preventDefault(); replaceSaveDlg.close(''); }
+});
+replaceSaveDlg.addEventListener('click', ev => {
+    const r = replaceSaveDlg.getBoundingClientRect();
+    if (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom)
+        replaceSaveDlg.close('');
+});
+replaceSaveDlg.addEventListener('close', () => {
+    const done = finishReplaceSave; finishReplaceSave = null;
+    if (done) done(replaceSaveDlg.returnValue === 'replace');
+});
+
+function confirmReplaceSave(text) {
+    if (replaceSaveDlg.open) return Promise.resolve(false);
+    replaceSaveText.textContent = text;
+    replaceSaveDlg.returnValue = '';
+    return new Promise(resolve => {
+        finishReplaceSave = resolve;
+        replaceSaveDlg.showModal();
+        replaceSaveKeep.focus();
+    });
+}
+
 function download(filename, bytes) {
     const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
     const a = document.createElement('a');
@@ -733,14 +846,39 @@ function download(filename, bytes) {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-$('importBtn').onclick = () => $('importFile').click();
-$('importFile').onchange = async ev => {
-    const files = [...ev.target.files];
-    ev.target.value = '';
+async function importFiles(files, handoffHandle = null) {
     if (!files.length) return;
     let flash = null, ram = null, base = '';
     for (const f of files) {
         const bytes = new Uint8Array(await f.arrayBuffer());
+        if (/\.tamasave$/i.test(f.name)) {
+            try {
+                const packed = decodeTamaSave(bytes);
+                const result = await applyTamaSaveImport(Slots, packed, {
+                    confirmReplace: ({ incoming, current, incomingSavedUtcMs, currentSavedUtcMs }) => {
+                        const when = ms => new Date(Number(ms)).toLocaleString(undefined, {
+                            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                        });
+                        const fileTime = when(incomingSavedUtcMs);
+                        const browserTime = when(currentSavedUtcMs);
+                        if (incoming < current) {
+                            return confirmReplaceSave('This file is older than the save already running.\n\n'
+                                + `File: saved ${fileTime}\nBrowser: saved ${browserTime}\n\n`
+                                + `Replacing it will overwrite your current save. You will lose anything played since ${fileTime}.\n\n`
+                                + 'Replace anyway?');
+                        }
+                        return confirmReplaceSave('This file and your current save come from the same save point.\n\n'
+                            + 'If you have played in either place since then, the two copies may be different. Keeping your browser save is the safe choice.\n\n'
+                            + 'Replace the browser save with the file?');
+                    },
+                });
+                if (result.action === 'cancelled') { say('Import cancelled; nothing changed.', 'warn'); return; }
+                if (handoffHandle) await Slots.update(result.id, { handoffHandle });
+                await refreshSlots(); await playSlot(result.id);
+                say(result.action === 'created' ? 'Imported as a new slot.' : 'Updated the existing slot.', 'ok');
+                return;
+            } catch (err) { say(`could not import ${f.name}: ${err.message}`, 'bad'); return; }
+        }
         if (devices.some(d => d.size === bytes.length)) {
             flash = bytes; base = f.name.replace(/\.sav$/i, '').replace(/\.[^.]+$/, '');
         } else if (bytes.length <= 65536) ram = bytes;
@@ -764,7 +902,16 @@ $('importFile').onchange = async ev => {
     await refreshSlots();
     say(`imported as "${base || 'imported'}" - ${titleOf(device)}`
       + (ram ? ' with its exact-session .ram sidecar' : ''), 'ok');
+}
+$('importBtn').onclick = async () => {
+    if (!window.showOpenFilePicker) { $('importFile').click(); return; }
+    try {
+        const [handle] = await showOpenFilePicker({ multiple: false });
+        const file = await handle.getFile();
+        await importFiles([file], /\.tamasave$/i.test(file.name) ? handle : null);
+    } catch (err) { if (err?.name !== 'AbortError') say(`could not open file: ${err.message}`, 'bad'); }
 };
+$('importFile').onchange = ev => { const files = [...ev.target.files]; ev.target.value = ''; importFiles(files); };
 
 const AUTOSAVE_MS = 20000;
 let savedNote = '';
@@ -774,14 +921,23 @@ async function persistNow(why) {
     if (saveHalted && why !== 'manual') return;
     const dirty = M._tw_flash_dirty();
     try {
-        await Slots.update(slotId, {
+        /* Manual Save reports a bad snapshot capture. Background saves still
+           keep flash and RAM, and preserve the last valid snapshot. */
+        const session = why === 'manual' ? grabSession() : tryCaptureSession(grabSession);
+        const changes = {
             ram: grabRam(),
             flash: dirty ? grabFlash() : undefined,
             emuSecs: emuTotal(),
-        });
+        };
+        if (session != null) changes.session = session;
+        await Slots.update(slotId, changes);
         if (dirty) M._tw_flash_clean();
         if (saveHalted) { saveHalted = false; applyStorageState(); }
-        savedNote = `saved ${new Date().toLocaleTimeString()}` + (dirty ? ' (incl. flash)' : '');
+        if (why === 'manual') {
+            try { await updateHandoffFile(slotId); } catch { /* internal save is still safe */ }
+        }
+        savedNote = `Session saved ${new Date().toLocaleTimeString()}`
+                  + (dirty ? ' (incl. flash)' : '');
         if (why === 'manual') say(savedNote, 'ok');
         if (why !== 'pagehide') await refreshSlots();
     } catch (err) {
