@@ -403,16 +403,16 @@ footer b { color: var(--warn); font-weight: 600; }
 }
 
 /* Modal in production; [open] also supports the in-flow states harness. */
-#deviceDlg, #gpioLinkDlg, #helpDlg {
+#deviceDlg, #gpioLinkDlg, #helpDlg, #replaceSaveDlg {
   width: min(26rem, calc(100vw - 2rem));
   padding: 1rem 1.05rem;
   background: var(--card); color: var(--ink);
   border: var(--bw) solid var(--line2); border-radius: var(--r-card);
   box-shadow: 0 8px 30px rgb(45 42 50 / .18);
 }
-#deviceDlg[open], #gpioLinkDlg[open], #helpDlg[open] { display: flex; flex-direction: column; gap: .7rem; }
-#deviceDlg::backdrop, #gpioLinkDlg::backdrop, #helpDlg::backdrop { background: rgb(45 42 50 / .38); }
-#deviceDlg h2, #gpioLinkDlg h2, #helpDlg h2 { font-size: var(--t-item); margin: 0; }
+#deviceDlg[open], #gpioLinkDlg[open], #helpDlg[open], #replaceSaveDlg[open] { display: flex; flex-direction: column; gap: .7rem; }
+#deviceDlg::backdrop, #gpioLinkDlg::backdrop, #helpDlg::backdrop, #replaceSaveDlg::backdrop { background: rgb(45 42 50 / .38); }
+#deviceDlg h2, #gpioLinkDlg h2, #helpDlg h2, #replaceSaveDlg h2 { font-size: var(--t-item); margin: 0; }
 
 #helpBtn { margin-right: auto; }
 
