@@ -1,0 +1,29 @@
+{
+  "name": "tamaemu-web",
+  "version": "1.0.0",
+  "description": "A Tamagotchi emulator that runs in browser. This is a web front end for tamaemu, compiled to WebAssembly!",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maragotchi/tamaemu-web.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "private": true,
+  "bugs": {
+    "url": "https://github.com/maragotchi/tamaemu-web/issues"
+  },
+  "homepage": "https://github.com/maragotchi/tamaemu-web#readme",
+  "devDependencies": {
+    "fake-indexeddb": "6.2.5"
+  }
+}
