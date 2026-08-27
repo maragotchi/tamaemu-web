@@ -15,9 +15,7 @@ rom from a device you own. The file is read locally in your browser; nothing is 
 
 1. Open the page in your browser.
 2. Drag and drop your firmware dump onto the screen (or click the screen to browse).
-3. Pick which Tamagotchi the dump is when asked. The best guess is
-   preselected. Picking the wrong one usually boots into factory mode or stops
-   the CPU; pick the right one and press Start again.
+3. Pick which Tamagotchi the dump is when asked. The best guess is preselected. Picking the wrong one usually boots into a black screen or sounds haunted.
 
 ## Controls
 
@@ -45,9 +43,21 @@ Every Tamagotchi you start gets a named save slot. Autosave writes every
 and deleted from the Save slots card.
 
 - **Saves live in your browser's storage.** Clearing site data
-  deletes them. Use **Export** to download a `.sav` backup of anything you
+  deletes them. Use **Export .sav** to download a flash-only backup of anything you
   care about.
-- Exported `.sav` files also open in the desktop `tamaemu` build.
+- **Save** updates the browser slot, including the current session point. It
+  does not download a file. Save as often as you want, and please remember to save before navigating away from the page!
+- **Reload** returns to that exact session point when its snapshot is
+  compatible. Otherwise it falls back to the slot's flash and RAM.
+- **Export .sav** is portable flash only and also opens in the desktop
+  `tamaemu` build.
+- **Export cross save** creates one `.tamasave` that picks up from the exact moment you left off!
+  Open it in tamaemu-web or the standalone emulator. This is handy for swapping between mobile browsers, or 
+  if you just want to keep your saves protected. Please be aware that if you export a cross save from tamaemu-web that it will
+  not pick up the same exact frame on the desktop emulator.
+- A cross save is a copy, not shared live storage! Save and export
+  before switching applications.  Do not continue playing the desktop and browser
+  copies at the same time. Weird things happen, just don't.
 - **Import a .sav** restores a backup into a new slot.
 - If the browser refuses storage (private browsing, blocked site data), the
   device still runs but nothing is kept; the page warns you and Export becomes
@@ -85,7 +95,10 @@ When downloading a VDP, select all of its files! (Usually there's three) Also, t
 
 ## Licence
 
-GPL-3.0 - see `LICENSE`.
+This project is licensed under GNU GPL-3.0 — see `LICENSE` for the full terms.
 
-Tamagotchi firmware is not covered by this licence and is not included; it is
-Bandai's, and you supply your own dump! 
+In short: you are free to use, fork, modify and share this software, including for your own projects. Anything created and distributed with this software must be shipped with its source code. There is no warrany and it is provided as is.
+
+Per the license: do not create closed-source projects with this software and do not charge others for this software.
+
+The Tamagotchi firmware is not part of this project. It is not covered by the license. You must supply your own dump from hardware you legally own.
