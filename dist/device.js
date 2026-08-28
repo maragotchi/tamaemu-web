@@ -4,6 +4,7 @@ let verb = 'Start';
 let settle = null;
 
 export function init() {
+    if (dlg) return;
     dlg      = document.getElementById('deviceDlg');
     list     = document.getElementById('deviceList');
     okEl     = document.getElementById('deviceOk');
@@ -31,6 +32,9 @@ function paintOk() {
 /* Render the caller's order unchanged; exact ROM-size matches belong first.
    Resolve to the selected device name, or null on cancellation. */
 export function choose({ list: choices, preselect, confirm = 'Start as' }) {
+    /* A file picker can resolve before the page's async storage startup reaches
+       Device.init(), especially in Firefox. The dialog markup already exists. */
+    if (!dlg) init();
     /* Keep the active dialog open when a second selection request arrives. */
     if (dlg.open) return Promise.resolve(null);
 

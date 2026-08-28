@@ -306,6 +306,99 @@ int      KEEP tw_flash_size(void) { return booted ? (int)e.dev.rom_size : 0; }
 uint8_t *KEEP tw_ram_ptr(void)    { return e.a0ram; }
 int      KEEP tw_ram_size(void)   { return booted ? (int)e.dev.a0ram_size : 0; }
 
+/* Browser session snapshots are private to this Wasm build.  The
+ * cross-save format carries this byte stream as an optional record; a
+ * different runtime can safely ignore it and continue from flash plus RAM. */
+#define TW_SESSION_MAGIC "TAMAWEBS"
+#define TW_SESSION_VERSION 1u
+#define TW_SESSION_HEADER 52u
+
+static void put_u32le(uint8_t *p, uint32_t v)
+{
+    p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8);
+    p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24);
+}
+
+static uint32_t get_u32le(const uint8_t *p)
+{
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8)
+         | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static uint32_t crc32(const uint8_t *p, size_t n)
+{
+    uint32_t crc = 0xFFFFFFFFu;
+    while (n--) {
+        crc ^= *p++;
+        for (int i = 0; i < 8; i++)
+            crc = (crc >> 1) ^ (0xEDB88320u & -(int32_t)(crc & 1));
+    }
+    return ~crc;
+}
+
+int KEEP tw_session_size(void)
+{
+    return booted && sizeof(Emu) <= INT32_MAX - TW_SESSION_HEADER
+        ? (int)(TW_SESSION_HEADER + sizeof(Emu)) : 0;
+}
+
+/* Reset only state that belongs to the host/browser. */
+void KEEP tw_session_reset_host(void)
+{
+    held_mask = 0;
+    e.btn_mask = 0;
+    e.link = NULL;
+    e.nfc_peer = NULL;
+    e.nfc_vpeer = NULL;
+    memset(&e.auto_link_storage, 0, sizeof e.auto_link_storage);
+    tw_audio_reset();
+}
+
+int KEEP tw_session_write(uint8_t *out, int cap)
+{
+    const int n = tw_session_size();
+    if (!out || n <= 0 || cap < n) return 0;
+
+    Emu snapshot = e;
+    /* These pointers and streams are owned by this page, not its session. */
+    snapshot.rom = NULL;
+    snapshot.link = NULL;
+    snapshot.nfc_peer = NULL;
+    snapshot.nfc_vpeer = NULL;
+    snapshot.tracef = NULL;
+    snapshot.lcd.logf = NULL;
+    memset(&snapshot.auto_link_storage, 0, sizeof snapshot.auto_link_storage);
+
+    memcpy(out, TW_SESSION_MAGIC, 8);
+    put_u32le(out + 8, TW_SESSION_VERSION);
+    put_u32le(out + 12, (uint32_t)sizeof(Emu));
+    put_u32le(out + 16, crc32(e.rom, e.dev.rom_size));
+    memset(out + 20, 0, 32);
+    memcpy(out + 20, e.dev.name, strlen(e.dev.name) < 31 ? strlen(e.dev.name) : 31);
+    memcpy(out + TW_SESSION_HEADER, &snapshot, sizeof snapshot);
+    return n;
+}
+
+int KEEP tw_session_restore(const uint8_t *wire, int n)
+{
+    if (!booted || !wire || n != tw_session_size()) return 0;
+    if (memcmp(wire, TW_SESSION_MAGIC, 8)
+        || get_u32le(wire + 8) != TW_SESSION_VERSION
+        || get_u32le(wire + 12) != sizeof(Emu)
+        || get_u32le(wire + 16) != crc32(e.rom, e.dev.rom_size)
+        || !e.dev.name || strncmp((const char *)wire + 20, e.dev.name, 32))
+        return 0;
+
+    uint8_t *rom = e.rom;
+    DeviceProfile dev = e.dev;
+    memcpy(&e, wire + TW_SESSION_HEADER, sizeof e);
+    e.rom = rom;
+    e.dev = dev;
+    keep_awake = e.stay_awake ? 1 : 0;
+    tw_session_reset_host();
+    return 1;
+}
+
 /* A0RAM is always saved; this flag avoids copying unchanged flash. */
 int  KEEP tw_flash_dirty(void) { return e.flash_dirty ? 1 : 0; }
 void KEEP tw_flash_clean(void) { e.flash_dirty = false; }
